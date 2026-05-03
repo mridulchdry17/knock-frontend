@@ -54,7 +54,13 @@ export default function WaitlistForm() {
 
   if (state.kind === "ok" || state.kind === "already") {
     const title =
-      state.kind === "ok" ? "You're on the list." : "You're already on the list.";
+      state.kind === "ok"
+        ? "Thanks for joining Knock."
+        : "You're already on the Knock waitlist.";
+    const subtitle =
+      state.kind === "ok"
+        ? "We'll knock on your inbox when early access opens."
+        : "We'll knock on your inbox when early access opens — no need to sign up again.";
     return (
       <div className="rounded-lg border border-zinc-200 bg-white p-5">
         <div className="flex items-start gap-3">
@@ -62,7 +68,7 @@ export default function WaitlistForm() {
           <div>
             <p className="text-sm font-medium text-zinc-900">{title}</p>
             <p className="mt-1 text-sm text-zinc-600">
-              We&apos;ll send your invite to <span className="text-zinc-900">{email}</span> when access opens.
+              {subtitle} <span className="text-zinc-900">{email}</span>
             </p>
           </div>
         </div>
