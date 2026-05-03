@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@vercel/analytics";
 
-type State = { kind: "idle" } | { kind: "loading" } | { kind: "ok" } | { kind: "err"; msg: string };
+type State =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "ok" }
+  | { kind: "already" }
+  | { kind: "err"; msg: string };
 
 export default function WaitlistForm() {
   const [email, setEmail] = useState("");
@@ -20,28 +26,41 @@ export default function WaitlistForm() {
         body: JSON.stringify({ email }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const code = data?.error?.code;
-        const msg =
-          code === "validation_error" || code === "invalid_email"
-            ? "Enter a valid email address."
-            : data?.error?.message ?? "Something went wrong. Try again.";
-        setState({ kind: "err", msg });
+
+      if (res.ok) {
+        // Genuine new signup — fire analytics conversion event.
+        track("waitlist_signup", {
+          domain: email.split("@")[1] ?? "unknown",
+        });
+        setState({ kind: "ok" });
         return;
       }
-      setState({ kind: "ok" });
+
+      const code = data?.error?.code;
+      if (code === "already_registered") {
+        setState({ kind: "already" });
+        return;
+      }
+
+      const msg =
+        code === "validation_error" || code === "invalid_email"
+          ? "Enter a valid email address."
+          : data?.error?.message ?? "Something went wrong. Try again.";
+      setState({ kind: "err", msg });
     } catch {
       setState({ kind: "err", msg: "Network error. Try again." });
     }
   }
 
-  if (state.kind === "ok") {
+  if (state.kind === "ok" || state.kind === "already") {
+    const title =
+      state.kind === "ok" ? "You're on the list." : "You're already on the list.";
     return (
       <div className="rounded-lg border border-zinc-200 bg-white p-5">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 h-5 w-5 rounded-full bg-zinc-900 text-white text-xs flex items-center justify-center">✓</div>
           <div>
-            <p className="text-sm font-medium text-zinc-900">You&apos;re on the list.</p>
+            <p className="text-sm font-medium text-zinc-900">{title}</p>
             <p className="mt-1 text-sm text-zinc-600">
               We&apos;ll send your invite to <span className="text-zinc-900">{email}</span> when access opens.
             </p>
