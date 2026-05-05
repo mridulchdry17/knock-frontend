@@ -1,0 +1,79 @@
+"use client";
+
+import * as React from "react";
+import { DailyCounter } from "@/components/knock/daily-counter";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+interface TodayHeaderProps {
+  /** Daily cap (7 free / 20 paid). null while loading — count renders as "—". */
+  cap: number | null;
+  sentToday: number | null;
+  loading?: boolean;
+}
+
+const WEEKDAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+function eyebrowFor(d: Date): string {
+  return `${WEEKDAYS[d.getDay()]} · ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}
+
+/**
+ * Sticky 96px header: eyebrow caption + h1 + sub on the left,
+ * DailyCounter + disabled "Send today's batch" on the right.
+ *
+ * Mobile: eyebrow + sub hidden; counter sits below the h1.
+ */
+export function TodayHeader({ cap, sentToday, loading }: TodayHeaderProps) {
+  const [eyebrow, setEyebrow] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    setEyebrow(eyebrowFor(new Date()));
+  }, []);
+
+  const headlineCount = loading || cap == null ? "—" : String(cap);
+
+  return (
+    <header
+      className={cn(
+        "sticky top-0 z-20 flex items-center border-b border-line bg-paper/80 px-gutter py-4 backdrop-blur lg:h-24 lg:px-8",
+      )}
+    >
+      <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+        <div className="min-w-0">
+          {eyebrow ? (
+            <p className="hidden text-caption text-ink-3 lg:block">{eyebrow}</p>
+          ) : null}
+          <h1 className="text-h1 text-ink">
+            Today&apos;s batch — {headlineCount} {cap === 1 ? "person" : "people"}.
+          </h1>
+          <p className="hidden text-small text-ink-2 lg:block">
+            Approve each one, edit anything, then send when you&apos;re ready.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 lg:gap-4">
+          <DailyCounter
+            sent={sentToday ?? 0}
+            cap={cap ?? 7}
+            loading={loading || cap == null || sentToday == null}
+          />
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* span wrapper so a disabled button still triggers tooltip */}
+                <span tabIndex={0} aria-label="Send today's batch — coming soon">
+                  <Button variant="ghost" size="sm" disabled className="hidden lg:inline-flex">
+                    Send today&apos;s batch
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Coming next. Approve cards first.</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+    </header>
+  );
+}
