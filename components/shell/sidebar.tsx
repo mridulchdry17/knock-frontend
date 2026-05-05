@@ -8,8 +8,17 @@ import { useAuth } from "@/components/auth/auth-context";
 import { ProfileMenu } from "@/components/shell/profile-menu";
 import { ADMIN_NAV, PRIMARY_NAV, SECONDARY_NAV_DESKTOP, type NavItem } from "@/components/shell/nav-config";
 import { Separator } from "@/components/ui/separator";
+import { GmailDisconnectedDot } from "@/components/gmail/gmail-disconnected-dot";
 
-function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+function NavLink({
+  item,
+  active,
+  trailing,
+}: {
+  item: NavItem;
+  active: boolean;
+  trailing?: React.ReactNode;
+}) {
   const Icon = item.icon;
   return (
     <Link
@@ -28,17 +37,20 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
         />
       )}
       <Icon size={16} aria-hidden />
-      <span>{item.label}</span>
+      <span className="flex-1">{item.label}</span>
+      {trailing}
     </Link>
   );
 }
 
 export function Sidebar() {
   const pathname = usePathname() ?? "";
-  const { user } = useAuth();
+  const { user, gmailDisconnected } = useAuth();
   const isAdmin = user?.tier === "super_admin";
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const trailingFor = (href: string) =>
+    href === "/today" && gmailDisconnected ? <GmailDisconnectedDot /> : undefined;
 
   return (
     <aside
@@ -53,7 +65,12 @@ export function Sidebar() {
 
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
         {PRIMARY_NAV.map((item) => (
-          <NavLink key={item.href} item={item} active={isActive(item.href)} />
+          <NavLink
+            key={item.href}
+            item={item}
+            active={isActive(item.href)}
+            trailing={trailingFor(item.href)}
+          />
         ))}
         <Separator className="my-3" />
         {SECONDARY_NAV_DESKTOP.map((item) => (

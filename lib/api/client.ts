@@ -11,11 +11,19 @@ import { ApiError, toApiError } from "@/lib/api/errors";
  *
  * Mapping:
  *   /api/v1/<rest>  →  /api/<rest>
- * Anything else is passed through unchanged (lets us call the public
- * waitlist proxy `/api/waitlist` directly during the F.1 → F.2 migration).
+ * Anything else is passed through unchanged.
  *
- * 401 → clear token + redirect to landing. Single source of truth for re-auth.
+ * 401 handling — split path (F.3):
+ *  - Codes meaning "session is gone" (`session_expired`, `invalid_token`,
+ *    `token_revoked`) → clear token + hard-redirect to landing.
+ *  - Anything else (default `unauthorized`) AND a token is still in memory
+ *    → treat as Gmail-token revoked at Google. Token stays. Emit a
+ *    `knock:gmail-reauth-required` window event for AuthContext to flip its
+ *    flag and surface the global reauth banner. The caller still receives
+ *    an ApiError (the request failed), but no destructive side effect.
  */
+export const GMAIL_REAUTH_EVENT = "knock:gmail-reauth-required" as const;
+const SESSION_DEAD_CODES = new Set(["session_expired", "invalid_token", "token_revoked"]);
 
 export type ApiFetchOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
@@ -58,13 +66,23 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
   });
 
   if (res.status === 401) {
-    clearToken();
-    const shouldRedirect = redirectOn401 ?? typeof window !== "undefined";
-    if (shouldRedirect && typeof window !== "undefined") {
-      window.location.href = DEFAULT_LANDING;
-    }
     const errBody = await res.json().catch(() => null);
-    throw toApiError(401, errBody);
+    const err = toApiError(401, errBody);
+
+    const tokenStillInMemory = Boolean(getToken());
+    const sessionDead = SESSION_DEAD_CODES.has(err.code) || !tokenStillInMemory;
+
+    if (sessionDead) {
+      clearToken();
+      const shouldRedirect = redirectOn401 ?? typeof window !== "undefined";
+      if (shouldRedirect && typeof window !== "undefined") {
+        window.location.href = DEFAULT_LANDING;
+      }
+    } else if (typeof window !== "undefined") {
+      // Gmail token revoked at Google. Surface to AuthContext; keep the session.
+      window.dispatchEvent(new CustomEvent(GMAIL_REAUTH_EVENT));
+    }
+    throw err;
   }
 
   if (!res.ok) {
