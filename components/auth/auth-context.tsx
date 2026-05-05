@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { clearToken, getToken } from "@/lib/auth/token";
 import { fetchCurrentUser } from "@/lib/auth/me";
+import { logout as apiLogout } from "@/lib/auth/onboarding";
 import type { CurrentUser } from "@/lib/auth/types";
 
 type Status = "idle" | "loading" | "authenticated" | "unauthenticated";
@@ -12,7 +13,16 @@ interface AuthContextValue {
   status: Status;
   hasToken: boolean;
   refresh: () => Promise<void>;
+  /**
+   * Local sign-out: clears token + state and hard-redirects to "/".
+   * Does NOT call the backend — use `signOutRemote()` for that.
+   */
   signOut: () => void;
+  /**
+   * Calls POST /api/v1/auth/logout (best-effort), then locally signs out.
+   * Defensive: if the backend is unreachable, still wipes local token + redirects.
+   */
+  signOutRemote: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -51,13 +61,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") window.location.href = "/";
   }, []);
 
+  const signOutRemote = useCallback(async () => {
+    try {
+      await apiLogout();
+    } catch {
+      // Defensive: backend down shouldn't strand the user. Local wipe still happens.
+    }
+    signOut();
+  }, [signOut]);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, hasToken, refresh, signOut }),
-    [user, status, hasToken, refresh, signOut],
+    () => ({ user, status, hasToken, refresh, signOut, signOutRemote }),
+    [user, status, hasToken, refresh, signOut, signOutRemote],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
