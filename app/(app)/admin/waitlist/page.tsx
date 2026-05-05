@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/shell/app-shell";
-import { ComingSoon } from "@/components/knock/coming-soon";
+import { WaitlistView } from "@/components/admin/waitlist-view";
 
 export default function AdminWaitlistPage() {
   return (
     <AppShell title="Waitlist">
-      <ComingSoon />
+      <WaitlistView />
     </AppShell>
   );
 }

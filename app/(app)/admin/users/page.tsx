@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/shell/app-shell";
-import { ComingSoon } from "@/components/knock/coming-soon";
+import { UsersView } from "@/components/admin/users-view";
 
 export default function AdminUsersPage() {
   return (
     <AppShell title="Users">
-      <ComingSoon />
+      <UsersView />
     </AppShell>
   );
 }
