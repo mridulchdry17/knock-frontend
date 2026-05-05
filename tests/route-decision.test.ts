@@ -101,7 +101,42 @@ describe("homeRouteFor", () => {
     expect(homeRouteFor(paid, true)).toBe("/today");
     expect(homeRouteFor(admin, true)).toBe("/today");
   });
+  it("approved + disconnected → /connect-gmail", () => {
+    const disconnected: CurrentUser = { ...free, gmail_connected: false };
+    expect(homeRouteFor(disconnected, true)).toBe("/connect-gmail");
+  });
+  it("approved + reauth required → /connect-gmail (even if /me says connected)", () => {
+    expect(homeRouteFor(free, true, true)).toBe("/connect-gmail");
+  });
   it("suspended → /", () => {
     expect(homeRouteFor(suspended, true)).toBe("/");
+  });
+});
+
+describe("decideRoute — gmail states", () => {
+  const disconnected: CurrentUser = { ...free, gmail_connected: false };
+
+  it("/onboarding for an approved disconnected user redirects to /connect-gmail", () => {
+    expect(decideRoute({ path: "/onboarding", user: disconnected, hasToken: true })).toEqual({
+      kind: "redirect",
+      to: "/connect-gmail",
+    });
+  });
+
+  it("/awaiting-approval for a free + reauth user redirects to /connect-gmail", () => {
+    expect(
+      decideRoute({ path: "/awaiting-approval", user: free, hasToken: true, gmailReauthRequired: true }),
+    ).toEqual({ kind: "redirect", to: "/connect-gmail" });
+  });
+
+  it("/today is still allowed for a disconnected user (banner takes over)", () => {
+    expect(decideRoute({ path: "/today", user: disconnected, hasToken: true })).toEqual({ kind: "allow" });
+  });
+
+  it("/connect-gmail is allowed for any approved user", () => {
+    expect(decideRoute({ path: "/connect-gmail", user: free, hasToken: true })).toEqual({ kind: "allow" });
+    expect(decideRoute({ path: "/connect-gmail", user: disconnected, hasToken: true })).toEqual({
+      kind: "allow",
+    });
   });
 });

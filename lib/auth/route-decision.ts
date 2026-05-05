@@ -26,9 +26,11 @@ export interface DecisionInput {
   user: CurrentUser | null;
   /** True iff a token is present in the store (prior to /me succeeding). */
   hasToken: boolean;
+  /** True iff a 401 with code != session_expired surfaced — Gmail revoked, session alive. */
+  gmailReauthRequired?: boolean;
 }
 
-export function decideRoute({ path, user, hasToken }: DecisionInput): RouteDecision {
+export function decideRoute({ path, user, hasToken, gmailReauthRequired = false }: DecisionInput): RouteDecision {
   // Public marketing/landing + auth callback are always allowed.
   if (PUBLIC_PATHS.has(path)) return { kind: "allow" };
 
@@ -61,7 +63,7 @@ export function decideRoute({ path, user, hasToken }: DecisionInput): RouteDecis
 
   // Approved users in onboarding/awaiting-approval bounce forward.
   if (path === "/onboarding" || path === "/awaiting-approval") {
-    return { kind: "redirect", to: "/today" };
+    return { kind: "redirect", to: needsConnectGmail(user, gmailReauthRequired) ? "/connect-gmail" : "/today" };
   }
 
   if (APP_ROUTES.has(path) || ANY_AUTHED.has(path)) {
@@ -72,13 +74,28 @@ export function decideRoute({ path, user, hasToken }: DecisionInput): RouteDecis
   return { kind: "allow" };
 }
 
+/**
+ * Approved-and-disconnected users get nudged to /connect-gmail by the smart-home
+ * route. We don't redirect them OFF /today though — F.5 owns /today's banner +
+ * sidebar dot, which are gentler. This helper is the single source of truth for
+ * "which page does the smart home pick?"
+ */
+function needsConnectGmail(user: CurrentUser, gmailReauthRequired: boolean): boolean {
+  return gmailReauthRequired || !user.gmail_connected;
+}
+
 /** Helper for the smart-home / route. */
-export function homeRouteFor(user: CurrentUser | null, hasToken: boolean): string {
+export function homeRouteFor(
+  user: CurrentUser | null,
+  hasToken: boolean,
+  gmailReauthRequired = false,
+): string {
   if (!hasToken || !user) return "/";
   if (user.tier === "suspended") return "/";
   if (user.tier === "pending") {
     return user.onboarded ? "/awaiting-approval" : "/onboarding";
   }
+  if (needsConnectGmail(user, gmailReauthRequired)) return "/connect-gmail";
   return "/today";
 }
 

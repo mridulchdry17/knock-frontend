@@ -12,17 +12,17 @@ import { Skeleton } from "@/components/ui/skeleton";
  * loading we render a soft skeleton instead of flashing the page.
  */
 export function RouteGuard({ children }: { children: React.ReactNode }) {
-  const { user, status, hasToken } = useAuth();
+  const { user, status, hasToken, gmailReauthRequired } = useAuth();
   const pathname = usePathname() ?? "/";
   const router = useRouter();
 
   useEffect(() => {
     if (status === "loading" || status === "idle") return;
-    const decision = decideRoute({ path: pathname, user, hasToken });
+    const decision = decideRoute({ path: pathname, user, hasToken, gmailReauthRequired });
     if (decision.kind === "redirect" && decision.to !== pathname) {
       router.replace(decision.to);
     }
-  }, [pathname, user, hasToken, status, router]);
+  }, [pathname, user, hasToken, gmailReauthRequired, status, router]);
 
   if (status === "loading" || status === "idle") {
     return (

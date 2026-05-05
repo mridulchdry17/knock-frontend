@@ -41,10 +41,10 @@ describe("apiFetch", () => {
     expect(headers.get("Authorization")).toBeNull();
   });
 
-  it("on 401, wipes the token and throws ApiError", async () => {
+  it("on 401 with session_expired code, wipes the token and throws ApiError", async () => {
     setToken("tok-1");
     const fetchSpy = vi.fn().mockResolvedValue(
-      mockResponse(401, { error: { code: "unauthorized", message: "expired" } }),
+      mockResponse(401, { error: { code: "session_expired", message: "expired" } }),
     );
     vi.stubGlobal("fetch", fetchSpy);
 
@@ -53,6 +53,25 @@ describe("apiFetch", () => {
     ).rejects.toBeInstanceOf(ApiError);
 
     expect(getToken()).toBeNull();
+  });
+
+  it("on generic 401 with token still present, KEEPS the token (Gmail-reauth path) and emits the reauth event", async () => {
+    setToken("tok-1");
+    const fetchSpy = vi.fn().mockResolvedValue(
+      mockResponse(401, { error: { code: "unauthorized", message: "no" } }),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const onReauth = vi.fn();
+    window.addEventListener("knock:gmail-reauth-required", onReauth);
+
+    await expect(
+      apiFetch("/api/v1/auth/me", { redirectOn401: false }),
+    ).rejects.toBeInstanceOf(ApiError);
+
+    expect(getToken()).toBe("tok-1");
+    expect(onReauth).toHaveBeenCalledTimes(1);
+    window.removeEventListener("knock:gmail-reauth-required", onReauth);
   });
 
   it("normalizes non-2xx responses into ApiError using the error envelope", async () => {

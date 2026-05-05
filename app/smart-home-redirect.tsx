@@ -11,15 +11,15 @@ import { homeRouteFor } from "@/lib/auth/route-decision";
  * If not, the landing page renders normally.
  */
 export function SmartHomeRedirect() {
-  const { user, status, hasToken } = useAuth();
+  const { user, status, hasToken, gmailReauthRequired } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (status === "loading" || status === "idle") return;
     if (!hasToken) return; // unauthed: stay on landing
-    const target = homeRouteFor(user, hasToken);
+    const target = homeRouteFor(user, hasToken, gmailReauthRequired);
     if (target !== "/") router.replace(target);
-  }, [user, status, hasToken, router]);
+  }, [user, status, hasToken, gmailReauthRequired, router]);
 
   return null;
 }
