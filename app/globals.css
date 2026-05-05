@@ -1,8 +1,39 @@
+@import "./styles/theme.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  background: #fafaf9;
-  color: #18181b;
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-feature-settings: "cv11", "ss01", "ss03";
+}
+
+/* Skip-to-content link — visible on focus only. */
+.skip-to-content {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  background: var(--paper);
+  color: var(--flint);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 100;
+}
+.skip-to-content:focus {
+  top: 8px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Universal focus ring on interactives. */
+:where(a, button, [role="button"], input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
