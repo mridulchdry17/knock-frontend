@@ -11,7 +11,7 @@ export type RouteDecision =
   | { kind: "allow" }
   | { kind: "redirect"; to: string };
 
-const PUBLIC_PATHS = new Set<string>(["/", "/login", "/auth/complete"]);
+const PUBLIC_PATHS = new Set<string>(["/", "/login", "/auth/complete", "/why-cooldown"]);
 
 /** Routes that require an authenticated user but no specific tier. */
 const ANY_AUTHED = new Set<string>(["/onboarding", "/awaiting-approval", "/connect-gmail"]);

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ChevronUp, LogOut, BookOpen, Mail } from "lucide-react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -22,8 +23,14 @@ function initials(name: string | null | undefined, email: string): string {
 }
 
 export function ProfileMenu() {
-  const { user, signOut } = useAuth();
+  const { user, signOutRemote } = useAuth();
   if (!user) return null;
+
+  async function handleSignOut() {
+    // Fire toast first so it shows even after the redirect kicks in.
+    toast("Signed out. Come back soon.");
+    await signOutRemote();
+  }
 
   return (
     <DropdownMenu>
@@ -63,7 +70,7 @@ export function ProfileMenu() {
           </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem destructive onSelect={() => signOut()}>
+        <DropdownMenuItem destructive onSelect={() => void handleSignOut()}>
           <LogOut size={14} aria-hidden />
           <span>Sign out</span>
         </DropdownMenuItem>

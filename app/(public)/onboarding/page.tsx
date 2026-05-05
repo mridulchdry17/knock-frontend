@@ -1,9 +1,5 @@
-import { ComingSoon } from "@/components/knock/coming-soon";
+import OnboardingClient from "./onboarding-client";
 
 export default function OnboardingPage() {
-  return (
-    <main className="min-h-screen flex items-center justify-center bg-paper">
-      <ComingSoon />
-    </main>
-  );
+  return <OnboardingClient />;
 }
