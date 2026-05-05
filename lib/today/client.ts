@@ -1,7 +1,7 @@
 import { apiFetch } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { TodayBatchSchema, type TodayBatch } from "@/lib/today/types";
-import { buildTodayFixture } from "@/lib/today/fixtures";
+import { getFixtureBatch } from "@/lib/today/fixtures";
 
 /**
  * Discriminated result for the /today read.
@@ -26,7 +26,7 @@ export function isFixtureMode(): boolean {
 
 export async function fetchTodayBatch(): Promise<TodayResult> {
   if (isFixtureMode()) {
-    return { kind: "batch", data: buildTodayFixture() };
+    return { kind: "batch", data: getFixtureBatch() };
   }
 
   try {

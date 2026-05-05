@@ -21,6 +21,9 @@ export const CurrentUserSchema = z
     has_gmail_connected: z.boolean().default(false),
     daily_limit: z.number().int().nonnegative().optional(),
     sent_today: z.number().int().nonnegative().optional(),
+    // Autopilot fields land in F.8 backend; tolerate absence by defaulting.
+    autopilot_enabled: z.boolean().optional().default(false),
+    autopilot_paused_at: z.string().nullable().optional().default(null),
   })
   .transform((u): CurrentUser => {
     const out: CurrentUser = {
@@ -30,6 +33,8 @@ export const CurrentUserSchema = z
       tier: u.tier,
       onboarded: u.onboarded,
       gmail_connected: u.has_gmail_connected,
+      autopilot_enabled: u.autopilot_enabled,
+      autopilot_paused_at: u.autopilot_paused_at,
     };
     if (u.daily_limit !== undefined) out.daily_limit = u.daily_limit;
     if (u.sent_today !== undefined) out.sent_today = u.sent_today;
@@ -45,6 +50,8 @@ export interface CurrentUser {
   gmail_connected: boolean;
   daily_limit?: number;
   sent_today?: number;
+  autopilot_enabled?: boolean;
+  autopilot_paused_at?: string | null;
 }
 
 export const OnboardingStatusSchema = z.object({
