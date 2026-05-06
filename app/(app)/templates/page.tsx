@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/shell/app-shell";
-import { ComingSoon } from "@/components/knock/coming-soon";
+import { TemplatesView } from "@/components/knock/templates-view";
 
 export default function TemplatesPage() {
   return (
     <AppShell title="Templates">
-      <ComingSoon />
+      <TemplatesView />
     </AppShell>
   );
 }
