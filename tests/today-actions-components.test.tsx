@@ -234,8 +234,8 @@ describe("<KeyboardShortcutsDialog />", () => {
   it("renders all shortcuts when open", () => {
     render(<KeyboardShortcutsDialog open onOpenChange={vi.fn()} />);
     expect(screen.getByText("Keyboard shortcuts")).toBeInTheDocument();
-    expect(screen.getByText("Next card")).toBeInTheDocument();
-    expect(screen.getByText("Open inline editor")).toBeInTheDocument();
+    expect(screen.getByText("Next card or thread")).toBeInTheDocument();
+    expect(screen.getByText("Open inline editor (Today)")).toBeInTheDocument();
     expect(screen.getByText("Send today's batch")).toBeInTheDocument();
   });
 

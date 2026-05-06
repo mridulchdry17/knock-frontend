@@ -1,18 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import Placeholder from "@tiptap/extension-placeholder";
-import {
-  Bold,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Variable as VariableIcon,
-} from "lucide-react";
+import { ListOrdered, Variable as VariableIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,6 +22,12 @@ import {
   applySampleValues,
   htmlToPreviewText,
 } from "@/components/knock/variable-chip";
+import {
+  RichTextEditor,
+  ToolbarButton,
+  MinimalToolbarButtons,
+  type RichTextEditorHandle,
+} from "@/components/knock/rich-text-editor";
 import { cn } from "@/lib/utils";
 
 /**
@@ -102,29 +100,22 @@ export function TemplateEditor({
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const subjectInputRef = React.useRef<HTMLInputElement | null>(null);
   const lastSavedRef = React.useRef<TemplateEditorValue>(initial);
+  const editorRef = React.useRef<RichTextEditorHandle | null>(null);
 
-  const editor = useEditor({
-    extensions: [
+  const handleBodyChange = React.useCallback((html: string) => {
+    setBody(html);
+    setDirty(true);
+    setFocusedField("body");
+  }, []);
+
+  const editorExtensions = React.useMemo(
+    () => [
       StarterKit,
       Link.configure({ openOnClick: false, autolink: true }),
-      Placeholder.configure({ placeholder: "Write your email body…" }),
       Variable,
     ],
-    content: initial.body,
-    immediatelyRender: false,
-    onUpdate: ({ editor }) => {
-      setBody(editor.getHTML());
-      setDirty(true);
-      setFocusedField("body");
-    },
-    editorProps: {
-      attributes: {
-        class:
-          "min-h-[240px] max-h-[60vh] overflow-y-auto rounded-md border border-line-2 bg-paper px-3 py-2 text-body text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-focus prose-sm",
-        "aria-label": "Email body",
-      },
-    },
-  });
+    [],
+  );
 
   // Sync external initial → state when a different template is loaded.
   React.useEffect(() => {
@@ -133,9 +124,7 @@ export function TemplateEditor({
     setBody(initial.body);
     lastSavedRef.current = initial;
     setDirty(false);
-    if (editor && editor.getHTML() !== initial.body) {
-      editor.commands.setContent(initial.body, { emitUpdate: false });
-    }
+    editorRef.current?.setContent(initial.body);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial.name, initial.subject, initial.body]);
 
@@ -193,8 +182,9 @@ export function TemplateEditor({
       });
       return;
     }
-    if (editor) {
-      editor.chain().focus().insertVariable(variable).run();
+    const ed = editorRef.current?.editor;
+    if (ed) {
+      ed.chain().focus().insertVariable(variable).run();
     }
   };
 
@@ -244,8 +234,18 @@ export function TemplateEditor({
                 aria-label="Email subject"
               />
             </label>
-            <Toolbar editor={editor} onInsertVariable={handleInsertVariable} />
-            <EditorContent editor={editor} />
+            <RichTextEditor
+              ref={editorRef}
+              value={initial.body}
+              onChange={handleBodyChange}
+              extensions={editorExtensions}
+              placeholder="Write your email body…"
+              ariaLabel="Email body"
+              minHeight="min-h-[240px]"
+              toolbar={(ed) => (
+                <TemplateToolbar editor={ed} onInsertVariable={handleInsertVariable} />
+              )}
+            />
           </div>
         ) : null}
 
@@ -310,86 +310,31 @@ export function TemplateEditor({
   );
 }
 
-interface ToolbarProps {
+interface TemplateToolbarProps {
   editor: Editor | null;
   onInsertVariable: (name: VariableName) => void;
 }
 
-function Toolbar({ editor, onInsertVariable }: ToolbarProps) {
-  const [linkOpen, setLinkOpen] = React.useState(false);
-  const [linkUrl, setLinkUrl] = React.useState("");
-
+/**
+ * Templates-specific toolbar = minimal (Bold/Italic/Link/Bullet) + numbered
+ * list + variable dropdown. Composed on top of MinimalToolbar's primitives.
+ */
+function TemplateToolbar({ editor, onInsertVariable }: TemplateToolbarProps) {
   if (!editor) {
     return (
       <div className="flex flex-wrap items-center gap-1 rounded-md border border-line-2 bg-paper-2 p-1" />
     );
   }
-
-  const tbutton = (active: boolean, onClick: () => void, label: string, Icon: React.ElementType) => (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-sm text-ink-2 hover:text-ink",
-        active && "bg-ember-tint text-flint",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-      )}
-    >
-      <Icon size={16} aria-hidden />
-    </button>
-  );
-
-  const applyLink = () => {
-    const url = linkUrl.trim();
-    if (!url) {
-      editor.chain().focus().unsetLink().run();
-    } else {
-      editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-    }
-    setLinkOpen(false);
-    setLinkUrl("");
-  };
-
   return (
     <div className="flex flex-wrap items-center gap-1 rounded-md border border-line-2 bg-paper-2 p-1">
-      {tbutton(editor.isActive("bold"), () => editor.chain().focus().toggleBold().run(), "Bold (Cmd+B)", Bold)}
-      {tbutton(editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run(), "Italic (Cmd+I)", Italic)}
-
-      <div className="relative">
-        {tbutton(editor.isActive("link"), () => {
-          const prev = (editor.getAttributes("link").href as string | undefined) ?? "";
-          setLinkUrl(prev);
-          setLinkOpen((o) => !o);
-        }, "Link (Cmd+K)", Link2)}
-        {linkOpen ? (
-          <div className="absolute left-0 top-9 z-10 flex items-center gap-2 rounded-md border border-line-2 bg-paper p-2 shadow-sm">
-            <Input
-              autoFocus
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://"
-              className="h-8 w-56"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  applyLink();
-                } else if (e.key === "Escape") {
-                  setLinkOpen(false);
-                }
-              }}
-            />
-            <Button size="sm" onClick={applyLink}>
-              Apply
-            </Button>
-          </div>
-        ) : null}
-      </div>
-
-      {tbutton(editor.isActive("bulletList"), () => editor.chain().focus().toggleBulletList().run(), "Bullet list", List)}
-      {tbutton(editor.isActive("orderedList"), () => editor.chain().focus().toggleOrderedList().run(), "Numbered list", ListOrdered)}
-
+      {/* Bold / Italic / Link / Bullet — shared with reply composer. */}
+      <MinimalToolbarButtons editor={editor} showBullet />
+      <ToolbarButton
+        active={editor.isActive("orderedList")}
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        label="Numbered list"
+        icon={ListOrdered}
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -419,6 +364,7 @@ function Toolbar({ editor, onInsertVariable }: ToolbarProps) {
     </div>
   );
 }
+
 
 /**
  * Render the Tiptap-emitted HTML with sample variable values substituted.

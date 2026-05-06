@@ -14,12 +14,18 @@ interface KeyboardShortcutsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/**
+ * Cheatsheet covers /today (R/S/E/⌘Enter) and /inbox (J/K/Enter/Esc).
+ * J/K is shared between screens.
+ */
 const SHORTCUTS: { keys: string; description: string }[] = [
-  { keys: "J", description: "Next card" },
-  { keys: "K", description: "Previous card" },
-  { keys: "R", description: "Toggle ready on focused card" },
-  { keys: "S", description: "Toggle skipped on focused card" },
-  { keys: "E", description: "Open inline editor" },
+  { keys: "J", description: "Next card or thread" },
+  { keys: "K", description: "Previous card or thread" },
+  { keys: "Enter", description: "Open selected thread (Inbox)" },
+  { keys: "Esc", description: "Close thread (Inbox)" },
+  { keys: "R", description: "Toggle ready on focused card (Today)" },
+  { keys: "S", description: "Toggle skipped on focused card (Today)" },
+  { keys: "E", description: "Open inline editor (Today)" },
   { keys: "⌘ Enter", description: "Send today's batch" },
   { keys: "?", description: "Show this cheat sheet" },
 ];

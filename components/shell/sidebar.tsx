@@ -9,6 +9,7 @@ import { ProfileMenu } from "@/components/shell/profile-menu";
 import { ADMIN_NAV, PRIMARY_NAV, SECONDARY_NAV_DESKTOP, type NavItem } from "@/components/shell/nav-config";
 import { Separator } from "@/components/ui/separator";
 import { GmailDisconnectedDot } from "@/components/gmail/gmail-disconnected-dot";
+import { useInboxUnreadCount } from "@/lib/inbox/use-unread-count";
 
 function NavLink({
   item,
@@ -47,10 +48,24 @@ export function Sidebar() {
   const pathname = usePathname() ?? "";
   const { user, gmailDisconnected } = useAuth();
   const isAdmin = user?.tier === "super_admin";
+  const inboxUnread = useInboxUnreadCount();
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const trailingFor = (href: string) =>
-    href === "/today" && gmailDisconnected ? <GmailDisconnectedDot /> : undefined;
+  const trailingFor = (href: string) => {
+    if (href === "/today" && gmailDisconnected) return <GmailDisconnectedDot />;
+    if (href === "/inbox" && inboxUnread > 0) {
+      return (
+        <span
+          data-testid="sidebar-inbox-unread"
+          className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-pill bg-ember-tint px-1.5 text-caption font-medium text-flint"
+          aria-label={`${inboxUnread} unread`}
+        >
+          {inboxUnread}
+        </span>
+      );
+    }
+    return undefined;
+  };
 
   return (
     <aside
