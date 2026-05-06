@@ -1,4 +1,13 @@
-import type { TodayBatch } from "@/lib/today/types";
+import { ApiError } from "@/lib/api/errors";
+import type {
+  TodayBatch,
+  TodayItem,
+  TodayItemPatch,
+  BatchDispatchResult,
+  SkipTodayResult,
+  AutopilotPauseResult,
+  AutopilotResumeResult,
+} from "@/lib/today/types";
 
 /**
  * Deterministic fixture batch for local development. Gated by
@@ -138,4 +147,107 @@ export function buildTodayFixture(): TodayBatch {
       },
     ],
   };
+}
+
+/**
+ * In-memory fixture state for action mutations. Built on first access; mutations
+ * persist for the page session. This lets local dev exercise the full ready /
+ * skip / edit / send flow without any backend.
+ *
+ * Reset on hard reload. Not exposed in production builds (mutation client only
+ * calls these when `NEXT_PUBLIC_USE_TODAY_FIXTURES=true`).
+ */
+let fixtureState: TodayBatch | null = null;
+let autopilotPaused: { paused: boolean; paused_at: string | null } = {
+  paused: false,
+  paused_at: null,
+};
+
+function getState(): TodayBatch {
+  if (!fixtureState) fixtureState = buildTodayFixture();
+  return fixtureState;
+}
+
+/** Shared fixture batch (initialized lazily). Mutations apply to this object. */
+export function getFixtureBatch(): TodayBatch {
+  return getState();
+}
+
+/** Test-only: wipe in-memory fixture state. */
+export function __resetFixtureStateForTests(): void {
+  fixtureState = null;
+  autopilotPaused = { paused: false, paused_at: null };
+}
+
+export async function fixtureUpdateCard(
+  itemId: string,
+  patch: TodayItemPatch,
+): Promise<TodayItem> {
+  const state = getState();
+  const idx = state.items.findIndex((i) => i.id === itemId);
+  if (idx === -1) {
+    throw new ApiError(404, "card_not_found", "Card not found.");
+  }
+  const current = state.items[idx];
+  if (current.status === "sent") {
+    throw new ApiError(409, "card_already_sent", "This card was already sent.");
+  }
+  const next: TodayItem = {
+    ...current,
+    ...(patch.status !== undefined ? { status: patch.status } : {}),
+    ...(patch.subject !== undefined ? { subject: patch.subject } : {}),
+    ...(patch.body !== undefined ? { body: patch.body, body_preview: patch.body.slice(0, 200) } : {}),
+    ...(patch.send_time !== undefined ? { send_time: patch.send_time } : {}),
+    ...(patch.template_id !== undefined ? { template_id: patch.template_id } : {}),
+  };
+  state.items[idx] = next;
+  return next;
+}
+
+export async function fixtureSendBatch(): Promise<BatchDispatchResult> {
+  const state = getState();
+  const ready = state.items.filter((i) => i.status === "ready");
+  if (ready.length === 0) {
+    throw new ApiError(422, "no_ready_cards", "Mark at least one card ready.");
+  }
+  const now = new Date();
+  const firstAt = now.toISOString();
+  const lastAt = new Date(now.getTime() + (ready.length - 1) * 90 * 1000).toISOString();
+  ready.forEach((item, i) => {
+    const sentAt = new Date(now.getTime() + i * 90 * 1000).toISOString();
+    const idx = state.items.findIndex((x) => x.id === item.id);
+    if (idx >= 0) {
+      state.items[idx] = { ...state.items[idx], status: "sent", sent_at: sentAt };
+    }
+  });
+  state.sent_today += ready.length;
+  return {
+    dispatched_count: ready.length,
+    scheduled_first_at: firstAt,
+    scheduled_last_at: lastAt,
+    batch_token: `fx-batch-${Date.now()}`,
+  };
+}
+
+export async function fixtureSkipToday(): Promise<SkipTodayResult> {
+  const state = getState();
+  state.items = state.items.map((i) =>
+    i.status === "sent" ? i : { ...i, status: "skipped" },
+  );
+  return { skipped: true };
+}
+
+export async function fixturePauseAutopilot(): Promise<AutopilotPauseResult> {
+  const at = new Date().toISOString();
+  autopilotPaused = { paused: true, paused_at: at };
+  return { paused: true, paused_at: at };
+}
+
+export async function fixtureResumeAutopilot(): Promise<AutopilotResumeResult> {
+  autopilotPaused = { paused: false, paused_at: null };
+  return { paused: false };
+}
+
+export function fixtureAutopilotPausedAt(): string | null {
+  return autopilotPaused.paused_at;
 }

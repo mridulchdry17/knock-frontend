@@ -1,12 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchTodayBatch } from "@/lib/today/client";
-import type { TodayBatch } from "@/lib/today/types";
+import {
+  updateCard as apiUpdateCard,
+  sendBatch as apiSendBatch,
+  skipToday as apiSkipToday,
+} from "@/lib/today/mutations";
+import type {
+  TodayBatch,
+  TodayItem,
+  TodayItemPatch,
+  BatchDispatchResult,
+} from "@/lib/today/types";
 import { ApiError } from "@/lib/api/errors";
 
 /**
- * Top-level UI state for /today. Page picks one of these and renders.
+ * Top-level UI state for /today.
  *
  *  - loading        first paint, no data yet
  *  - no-batch-yet   pre-cron / backend not built / upstream 502
@@ -23,11 +33,48 @@ export type TodayStatus =
   | "populated"
   | "error";
 
+/**
+ * Send-batch flow phases. Drives the toast + button states.
+ *
+ *  - idle         no send in flight
+ *  - holding      3-second client-side hold before firing API; user can undo
+ *  - dispatching  hold ended, awaiting API response
+ *  - dispatched   API returned ok; cards transitioned to sent
+ */
+export type SendPhase = "idle" | "holding" | "dispatching" | "dispatched";
+
 export interface UseTodayResult {
   status: TodayStatus;
   data: TodayBatch | null;
   error: ApiError | null;
   retry: () => void;
+  /** Count of cards in `ready` status. Convenience for the header button. */
+  readyCount: number;
+  /** Optimistic mutations. Each rolls back on failure and surfaces an ApiError via the returned promise. */
+  markReady: (itemId: string) => Promise<void>;
+  markSkipped: (itemId: string) => Promise<void>;
+  markDefault: (itemId: string) => Promise<void>;
+  editCard: (itemId: string, patch: TodayItemPatch) => Promise<TodayItem>;
+  /** Mark every default-state card as ready (header convenience). */
+  markAllReady: () => Promise<void>;
+  /** Initiate the 3-second hold + send flow. Resolves to undo handle. */
+  beginSend: () => SendHandle | null;
+  sendPhase: SendPhase;
+  /** Result of the most recent send (after API completes). */
+  sendResult: BatchDispatchResult | null;
+  /** Skip the entire batch for today. */
+  skipBatch: () => Promise<void>;
+}
+
+/** Returned from beginSend; lets the caller cancel the 3s hold. */
+export interface SendHandle {
+  /** Cancel the pending dispatch (only valid during 'holding'). */
+  cancel: () => void;
+  /**
+   * Resolves once the dispatch resolves (success or failure). Caller can await
+   * for "all done — clean up toast" behavior, but must NOT block UI on it.
+   */
+  done: Promise<BatchDispatchResult | null>;
 }
 
 function deriveStatus(batch: TodayBatch): "no-matches" | "limit-reached" | "populated" {
@@ -41,6 +88,15 @@ export function useToday(): UseTodayResult {
   const [data, setData] = useState<TodayBatch | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [sendPhase, setSendPhase] = useState<SendPhase>("idle");
+  const [sendResult, setSendResult] = useState<BatchDispatchResult | null>(null);
+
+  // Refs so the send-flow setTimeout has access to live data without recreating the timer.
+  const sendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelledRef = useRef<boolean>(false);
+  // Live-data ref so mutation handlers can capture a true pre-mutation snapshot
+  // without racing the React setState batcher.
+  const dataRef = useRef<TodayBatch | null>(null);
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -62,6 +118,7 @@ export function useToday(): UseTodayResult {
           setStatus("error");
           return;
         }
+        dataRef.current = result.data;
         setData(result.data);
         setStatus(deriveStatus(result.data));
       })
@@ -80,5 +137,234 @@ export function useToday(): UseTodayResult {
     };
   }, [reloadKey]);
 
-  return { status, data, error, retry };
+  /** Apply a partial mutation to a single item; returns a snapshot of the prior item for rollback. */
+  const patchItemLocal = useCallback(
+    (itemId: string, partial: Partial<TodayItem>): TodayItem | null => {
+      const cur = dataRef.current;
+      if (!cur) return null;
+      const idx = cur.items.findIndex((i) => i.id === itemId);
+      if (idx < 0) return null;
+      const snapshot = cur.items[idx];
+      const nextItems = cur.items.slice();
+      nextItems[idx] = { ...nextItems[idx], ...partial };
+      const nextBatch = { ...cur, items: nextItems };
+      dataRef.current = nextBatch;
+      setData(nextBatch);
+      setStatus(deriveStatus(nextBatch));
+      return snapshot;
+    },
+    [],
+  );
+
+  const restoreItem = useCallback((itemId: string, prior: TodayItem | null) => {
+    if (!prior) return;
+    const cur = dataRef.current;
+    if (!cur) return;
+    const idx = cur.items.findIndex((i) => i.id === itemId);
+    if (idx < 0) return;
+    const nextItems = cur.items.slice();
+    nextItems[idx] = prior;
+    const nextBatch = { ...cur, items: nextItems };
+    dataRef.current = nextBatch;
+    setData(nextBatch);
+    setStatus(deriveStatus(nextBatch));
+  }, []);
+
+  const runStatusMutation = useCallback(
+    async (itemId: string, nextStatus: TodayItem["status"]) => {
+      const snap = patchItemLocal(itemId, { status: nextStatus });
+      try {
+        await apiUpdateCard(itemId, { status: nextStatus });
+      } catch (err) {
+        restoreItem(itemId, snap);
+        throw err;
+      }
+    },
+    [patchItemLocal, restoreItem],
+  );
+
+  const markReady = useCallback(
+    (id: string) => runStatusMutation(id, "ready"),
+    [runStatusMutation],
+  );
+  const markSkipped = useCallback(
+    (id: string) => runStatusMutation(id, "skipped"),
+    [runStatusMutation],
+  );
+  const markDefault = useCallback(
+    (id: string) => runStatusMutation(id, "default"),
+    [runStatusMutation],
+  );
+
+  const editCard = useCallback(
+    async (itemId: string, patch: TodayItemPatch): Promise<TodayItem> => {
+      // Per spec: any inline edit auto-marks ready.
+      const merged: TodayItemPatch = { ...patch };
+      if (merged.status === undefined) merged.status = "ready";
+      const snap = patchItemLocal(itemId, {
+        ...(merged.subject !== undefined ? { subject: merged.subject } : {}),
+        ...(merged.body !== undefined
+          ? { body: merged.body, body_preview: merged.body.slice(0, 200) }
+          : {}),
+        ...(merged.send_time !== undefined ? { send_time: merged.send_time } : {}),
+        ...(merged.template_id !== undefined ? { template_id: merged.template_id } : {}),
+        status: merged.status,
+      });
+      try {
+        const updated = await apiUpdateCard(itemId, merged);
+        // Replace with server canonical version.
+        const cur = dataRef.current;
+        if (cur) {
+          const idx = cur.items.findIndex((i) => i.id === itemId);
+          if (idx >= 0) {
+            const nextItems = cur.items.slice();
+            nextItems[idx] = updated;
+            const nextBatch = { ...cur, items: nextItems };
+            dataRef.current = nextBatch;
+            setData(nextBatch);
+          }
+        }
+        return updated;
+      } catch (err) {
+        restoreItem(itemId, snap);
+        throw err;
+      }
+    },
+    [patchItemLocal, restoreItem],
+  );
+
+  const markAllReady = useCallback(async () => {
+    const cur = data;
+    if (!cur) return;
+    const targets = cur.items.filter((i) => i.status === "default");
+    await Promise.all(
+      targets.map((t) =>
+        runStatusMutation(t.id, "ready").catch(() => {
+          // Individual failures bubble up via toast at call site for the bulk action;
+          // here we swallow to avoid Promise.all's all-or-nothing behavior.
+        }),
+      ),
+    );
+  }, [data, runStatusMutation]);
+
+  /**
+   * Begin the send-batch flow with a 3-second client-side hold.
+   *
+   * Phase transitions: idle → holding → (cancel? idle) → dispatching → dispatched|idle.
+   *
+   * v0.5+ swap point: replace the local setTimeout + cancel ref pair with a
+   * server-side queue token + cancel API call.
+   */
+  const beginSend = useCallback((): SendHandle | null => {
+    if (!data) return null;
+    const ready = data.items.filter((i) => i.status === "ready");
+    if (ready.length === 0) return null;
+    cancelledRef.current = false;
+    setSendPhase("holding");
+
+    let resolveDone: (v: BatchDispatchResult | null) => void = () => {};
+    const done = new Promise<BatchDispatchResult | null>((resolve) => {
+      resolveDone = resolve;
+    });
+
+    sendTimerRef.current = setTimeout(() => {
+      if (cancelledRef.current) return;
+      setSendPhase("dispatching");
+      apiSendBatch()
+        .then((res) => {
+          setSendResult(res);
+          // Optimistically transition all ready cards to sent.
+          const cur = dataRef.current;
+          if (cur) {
+            const sentIds = new Set(
+              cur.items.filter((i) => i.status === "ready").map((i) => i.id),
+            );
+            const now = new Date(res.scheduled_first_at);
+            const nextItems = cur.items.map((item) => {
+              if (!sentIds.has(item.id)) return item;
+              return { ...item, status: "sent" as const, sent_at: now.toISOString() };
+            });
+            const nextBatch = {
+              ...cur,
+              items: nextItems,
+              sent_today: cur.sent_today + res.dispatched_count,
+            };
+            dataRef.current = nextBatch;
+            setData(nextBatch);
+            setStatus(deriveStatus(nextBatch));
+          }
+          setSendPhase("dispatched");
+          resolveDone(res);
+        })
+        .catch(() => {
+          // Failure: cards stay in ready state (no optimistic transition was done yet).
+          setSendPhase("idle");
+          resolveDone(null);
+        });
+    }, 3000);
+
+    return {
+      cancel: () => {
+        if (cancelledRef.current) return;
+        cancelledRef.current = true;
+        if (sendTimerRef.current) {
+          clearTimeout(sendTimerRef.current);
+          sendTimerRef.current = null;
+        }
+        setSendPhase("idle");
+        resolveDone(null);
+      },
+      done,
+    };
+  }, [data]);
+
+  // Reset sendPhase back to idle after a moment of "dispatched" so subsequent sends work.
+  useEffect(() => {
+    if (sendPhase !== "dispatched") return;
+    const t = setTimeout(() => setSendPhase("idle"), 1500);
+    return () => clearTimeout(t);
+  }, [sendPhase]);
+
+  // Cleanup any pending send-timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (sendTimerRef.current) clearTimeout(sendTimerRef.current);
+    };
+  }, []);
+
+  const skipBatch = useCallback(async () => {
+    await apiSkipToday();
+    // After skip: backend has flipped all cards to skipped; UI transitions to limit-reached.
+    const cur = dataRef.current;
+    if (cur) {
+      const nextItems = cur.items.map((i) =>
+        i.status === "sent" ? i : { ...i, status: "skipped" as const },
+      );
+      const nextBatch = { ...cur, items: nextItems, sent_today: cur.cap };
+      dataRef.current = nextBatch;
+      setData(nextBatch);
+      setStatus("limit-reached");
+    }
+  }, []);
+
+  const readyCount = data
+    ? data.items.filter((i) => i.status === "ready").length
+    : 0;
+
+  return {
+    status,
+    data,
+    error,
+    retry,
+    readyCount,
+    markReady,
+    markSkipped,
+    markDefault,
+    editCard,
+    markAllReady,
+    beginSend,
+    sendPhase,
+    sendResult,
+    skipBatch,
+  };
 }

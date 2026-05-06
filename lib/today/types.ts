@@ -50,3 +50,42 @@ export const TodayBatchSchema = z.object({
   items: z.array(TodayItemSchema),
 });
 export type TodayBatch = z.infer<typeof TodayBatchSchema>;
+
+/** PATCH /api/v1/today/items/{id} body. Any subset of these fields. */
+export const TodayItemPatchSchema = z.object({
+  status: TodayCardStatusSchema.optional(),
+  subject: z.string().optional(),
+  body: z.string().optional(),
+  send_time: z.string().optional(),
+  template_id: z.string().optional(),
+});
+export type TodayItemPatch = z.infer<typeof TodayItemPatchSchema>;
+
+/** POST /api/v1/today/send-batch response. */
+export const BatchDispatchResultSchema = z.object({
+  dispatched_count: z.number().int().nonnegative(),
+  scheduled_first_at: z.string(),
+  scheduled_last_at: z.string(),
+  /** Server returns a token for the cancel endpoint; not used in F.5b client-side undo. */
+  batch_token: z.string().optional(),
+});
+export type BatchDispatchResult = z.infer<typeof BatchDispatchResultSchema>;
+
+/** POST /api/v1/today/skip response. */
+export const SkipTodayResultSchema = z.object({
+  skipped: z.literal(true),
+});
+export type SkipTodayResult = z.infer<typeof SkipTodayResultSchema>;
+
+/** POST /api/v1/autopilot/pause response. */
+export const AutopilotPauseResultSchema = z.object({
+  paused: z.literal(true),
+  paused_at: z.string(),
+});
+export type AutopilotPauseResult = z.infer<typeof AutopilotPauseResultSchema>;
+
+/** POST /api/v1/autopilot/resume response. */
+export const AutopilotResumeResultSchema = z.object({
+  paused: z.literal(false),
+});
+export type AutopilotResumeResult = z.infer<typeof AutopilotResumeResultSchema>;

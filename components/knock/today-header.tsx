@@ -11,6 +11,14 @@ interface TodayHeaderProps {
   cap: number | null;
   sentToday: number | null;
   loading?: boolean;
+  /** Count of cards currently in `ready` status. Drives button enabled state. */
+  readyCount?: number;
+  /** Total non-default+non-sent count (used to gate "Mark all ready" affordance). */
+  defaultCount?: number;
+  onSend?: () => void;
+  onMarkAllReady?: () => void;
+  /** When set, shows a 13px ink-3 hint "Press ? for shortcuts" next to the date. */
+  showShortcutHint?: boolean;
 }
 
 const WEEKDAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
@@ -21,18 +29,31 @@ function eyebrowFor(d: Date): string {
 }
 
 /**
- * Sticky 96px header: eyebrow caption + h1 + sub on the left,
- * DailyCounter + disabled "Send today's batch" on the right.
+ * Sticky 96px header for /today. F.5b adds:
+ *  - real "Send today's batch" primary button (Flint solid), disabled when readyCount===0
+ *  - tooltip on disabled state: "Mark cards ready to send today's batch."
+ *  - "Mark all ready" ghost when ≥10 cards in default state
+ *  - first-7-sessions hint "Press ? for shortcuts"
  *
- * Mobile: eyebrow + sub hidden; counter sits below the h1.
+ * The 3s undo + Sonner toast lives at the page layer (page owns useToday).
  */
-export function TodayHeader({ cap, sentToday, loading }: TodayHeaderProps) {
+export function TodayHeader({
+  cap,
+  sentToday,
+  loading,
+  readyCount = 0,
+  defaultCount = 0,
+  onSend,
+  onMarkAllReady,
+  showShortcutHint,
+}: TodayHeaderProps) {
   const [eyebrow, setEyebrow] = React.useState<string | null>(null);
   React.useEffect(() => {
     setEyebrow(eyebrowFor(new Date()));
   }, []);
 
   const headlineCount = loading || cap == null ? "—" : String(cap);
+  const sendDisabled = readyCount === 0;
 
   return (
     <header
@@ -43,7 +64,12 @@ export function TodayHeader({ cap, sentToday, loading }: TodayHeaderProps) {
       <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
         <div className="min-w-0">
           {eyebrow ? (
-            <p className="hidden text-caption text-ink-3 lg:block">{eyebrow}</p>
+            <p className="hidden text-caption text-ink-3 lg:block">
+              {eyebrow}
+              {showShortcutHint ? (
+                <span className="ml-2 text-ink-3">· Press ? for shortcuts</span>
+              ) : null}
+            </p>
           ) : null}
           <h1 className="text-h1 text-ink">
             Today&apos;s batch — {headlineCount} {cap === 1 ? "person" : "people"}.
@@ -59,17 +85,28 @@ export function TodayHeader({ cap, sentToday, loading }: TodayHeaderProps) {
             cap={cap ?? 7}
             loading={loading || cap == null || sentToday == null}
           />
+          {defaultCount >= 10 && onMarkAllReady ? (
+            <Button variant="ghost" size="sm" onClick={onMarkAllReady} className="hidden lg:inline-flex">
+              Mark all ready
+            </Button>
+          ) : null}
           <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>
-                {/* span wrapper so a disabled button still triggers tooltip */}
-                <span tabIndex={0} aria-label="Send today's batch — coming soon">
-                  <Button variant="ghost" size="sm" disabled className="hidden lg:inline-flex">
+                <span tabIndex={sendDisabled ? 0 : -1} aria-label="Send today's batch">
+                  <Button
+                    size="sm"
+                    onClick={onSend}
+                    disabled={sendDisabled || !onSend}
+                    className="w-full lg:w-[320px]"
+                  >
                     Send today&apos;s batch
                   </Button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent>Coming next. Approve cards first.</TooltipContent>
+              {sendDisabled ? (
+                <TooltipContent>Mark cards ready to send today&apos;s batch.</TooltipContent>
+              ) : null}
             </Tooltip>
           </TooltipProvider>
         </div>
