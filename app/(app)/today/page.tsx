@@ -10,10 +10,11 @@ import { AvatarStrip } from "@/components/knock/avatar-strip";
 import { RecipientCard } from "@/components/knock/recipient-card";
 import { TodayEmptyState } from "@/components/knock/today-empty-state";
 import { UndoToast } from "@/components/knock/undo-toast";
-import { KeyboardShortcutsDialog } from "@/components/knock/keyboard-shortcuts-dialog";
+import { useGlobalShortcuts } from "@/components/knock/global-shortcuts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
+import { showSnagToast } from "@/lib/ui/snag-toast";
 import { useToday, type TodayStatus } from "@/lib/today/use-today";
 import { useTodayShortcuts } from "@/lib/today/use-today-shortcuts";
 import { pauseAutopilot, resumeAutopilot } from "@/lib/autopilot/client";
@@ -57,7 +58,7 @@ export default function TodayPage() {
     }
   }, []);
 
-  const [cheatsheetOpen, setCheatsheetOpen] = React.useState(false);
+  const { openShortcuts } = useGlobalShortcuts();
 
   const onAutopilotPause = React.useCallback(async () => {
     try {
@@ -78,7 +79,7 @@ export default function TodayPage() {
               void resumeAutopilot()
                 .then(() => refresh())
                 .catch(() => {
-                  toast.error("We hit a snag — try again in a moment.");
+                  showSnagToast();
                 });
               toast.dismiss(id);
             }}
@@ -90,7 +91,7 @@ export default function TodayPage() {
       void refresh();
       void res;
     } catch {
-      toast.error("We hit a snag — try again in a moment.");
+      showSnagToast();
     }
   }, [refresh]);
 
@@ -99,7 +100,7 @@ export default function TodayPage() {
       await resumeAutopilot();
       await refresh();
     } catch {
-      toast.error("We hit a snag — try again in a moment.");
+      showSnagToast();
     }
   }, [refresh]);
 
@@ -152,10 +153,9 @@ export default function TodayPage() {
         markDefault={today.markDefault}
         editCard={today.editCard}
         skipBatch={today.skipBatch}
-        onShowCheatsheet={() => setCheatsheetOpen(true)}
+        onShowCheatsheet={openShortcuts}
         onSendBatch={() => beginSendWithToast(today)}
       />
-      <KeyboardShortcutsDialog open={cheatsheetOpen} onOpenChange={setCheatsheetOpen} />
     </AppShell>
   );
 }
@@ -270,11 +270,11 @@ function PageBody({
         variant="no-matches"
         onSkipToday={() => {
           void skipBatch().catch((err) => {
-            toast.error(
-              err instanceof ApiError
-                ? err.message
-                : "We hit a snag — try again in a moment.",
-            );
+            if (err instanceof ApiError) {
+              toast.error(err.message);
+            } else {
+              showSnagToast();
+            }
           });
         }}
       />
@@ -366,7 +366,7 @@ function PopulatedView({
   const wrapWithSnag = React.useCallback(
     (fn: (id: string) => Promise<unknown>) => (id: string) => {
       void fn(id).catch(() => {
-        toast.error("We hit a snag — try again in a moment.");
+        showSnagToast();
       });
     },
     [],
@@ -383,7 +383,7 @@ function PopulatedView({
           toast("Skipped. We'll pick another.");
         })
         .catch(() => {
-          toast.error("We hit a snag — try again in a moment.");
+          showSnagToast();
         });
     },
     [markSkipped],

@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/knock/empty-state";
 import { KeyboardHint } from "@/components/knock/keyboard-hint";
-import { KeyboardShortcutsDialog } from "@/components/knock/keyboard-shortcuts-dialog";
+import { useGlobalShortcuts } from "@/components/knock/global-shortcuts";
 import { InboxList } from "@/components/knock/inbox-list";
 import { ThreadDetail, ThreadDetailSkeleton } from "@/components/knock/thread-detail";
 import { useInbox, useThread } from "@/lib/inbox/use-inbox";
@@ -25,7 +25,7 @@ export function InboxView() {
   const router = useRouter();
   const inbox = useInbox();
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  const [cheatsheetOpen, setCheatsheetOpen] = React.useState(false);
+  const { openShortcuts } = useGlobalShortcuts();
 
   const isMobile = useIsMobile();
 
@@ -78,7 +78,7 @@ export function InboxView() {
     onSelect,
     onOpen,
     onEscape: () => setSelectedId(null),
-    onShowCheatsheet: () => setCheatsheetOpen(true),
+    onShowCheatsheet: openShortcuts,
     disabled: isMobile,
   });
 
@@ -152,10 +152,6 @@ export function InboxView() {
         </div>
       ) : null}
 
-      <KeyboardShortcutsDialog
-        open={cheatsheetOpen}
-        onOpenChange={setCheatsheetOpen}
-      />
     </div>
   );
 }
