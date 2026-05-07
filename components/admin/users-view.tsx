@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
+import { showSnagToast } from "@/lib/ui/snag-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,7 +80,7 @@ export function UsersView() {
       handleRemovedFromList(user.id);
       setSelected(null);
     } catch {
-      toast.error("We hit a snag. Try again in a moment.");
+      showSnagToast();
     } finally {
       setBusy(false);
     }
@@ -93,7 +94,7 @@ export function UsersView() {
       handleRemovedFromList(user.id);
       setSelected(null);
     } catch {
-      toast.error("We hit a snag. Try again in a moment.");
+      showSnagToast();
     } finally {
       setBusy(false);
     }
@@ -107,7 +108,7 @@ export function UsersView() {
       handleRemovedFromList(user.id);
       setSelected(null);
     } catch {
-      toast.error("We hit a snag. Try again in a moment.");
+      showSnagToast();
     } finally {
       setBusy(false);
     }
@@ -135,7 +136,7 @@ export function UsersView() {
       handleRemovedFromList(user.id);
       setSelected(null);
     } catch {
-      toast.error("We hit a snag. Try again in a moment.");
+      showSnagToast();
     } finally {
       setBusy(false);
     }
