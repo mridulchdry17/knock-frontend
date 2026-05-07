@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/knock/status-pill";
 import { CardEditor } from "@/components/knock/card-editor";
 import { SendTimePicker } from "@/components/knock/send-time-picker";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { TodayItem, TodayItemPatch } from "@/lib/today/types";
 
@@ -218,17 +219,37 @@ export function RecipientCard({
         ) : null}
       </footer>
 
-      {pickerOpen && onEditCard ? (
-        <div className="lg:absolute lg:right-card lg:top-[calc(100%-8px)] lg:z-10">
-          <SendTimePicker
-            value={item.send_time}
-            onApply={(iso) => {
-              setPickerOpen(false);
-              void onEditCard(item.id, { send_time: iso });
-            }}
-            onCancel={() => setPickerOpen(false)}
-          />
-        </div>
+      {onEditCard ? (
+        <>
+          {/* Desktop: inline popover anchored to the card. */}
+          {pickerOpen ? (
+            <div className="hidden lg:absolute lg:right-card lg:top-[calc(100%-8px)] lg:z-10 lg:block">
+              <SendTimePicker
+                value={item.send_time}
+                onApply={(iso) => {
+                  setPickerOpen(false);
+                  void onEditCard(item.id, { send_time: iso });
+                }}
+                onCancel={() => setPickerOpen(false)}
+              />
+            </div>
+          ) : null}
+          {/* Mobile: bottom sheet (per spec — easier targets, no off-screen popover). */}
+          <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
+            <SheetContent side="bottom" className="lg:hidden p-card">
+              <SheetTitle className="sr-only">Send when?</SheetTitle>
+              <SendTimePicker
+                value={item.send_time}
+                mobile
+                onApply={(iso) => {
+                  setPickerOpen(false);
+                  void onEditCard(item.id, { send_time: iso });
+                }}
+                onCancel={() => setPickerOpen(false)}
+              />
+            </SheetContent>
+          </Sheet>
+        </>
       ) : null}
 
       <ActionRow
