@@ -126,7 +126,7 @@ export default function AwaitingApprovalClient() {
               href="/why-cooldown"
               className="text-flint text-small underline-offset-4 hover:underline"
             >
-              Read: how Knock keeps outreach kind
+              Read: how Knock keeps reaching out kind
             </a>
           </div>
         </section>

@@ -22,7 +22,7 @@ const jetBrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Knock — early access",
   description:
-    "Cold outreach from your own Gmail, without two people emailing the same person. Join the waitlist.",
+    "Reach out from your own Gmail, without two people emailing the same person. Join the waitlist.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

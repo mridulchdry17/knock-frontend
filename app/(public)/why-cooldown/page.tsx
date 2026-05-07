@@ -12,7 +12,7 @@ export default function WhyCooldownPage() {
         <Wordmark size={28} />
       </div>
       <ComingSoon
-        title="How Knock keeps outreach kind."
+        title="How Knock keeps reaching out kind."
         body="A short note on cooldowns and the shared lock — coming soon."
       />
     </main>

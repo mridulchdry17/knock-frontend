@@ -20,7 +20,7 @@ export default function Page() {
               Knock
             </div>
             <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-zinc-900 leading-tight">
-              Cold outreach from your own Gmail.
+              Reach out from your own Gmail.
             </h1>
             <p className="mt-4 text-zinc-600 text-[15px] leading-relaxed">
               Personalized sends, auto follow-ups, and a shared lock so no two
