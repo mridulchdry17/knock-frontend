@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/shell/app-shell";
-import { ComingSoon } from "@/components/knock/coming-soon";
+import { PreferencesView } from "@/components/preferences/preferences-view";
 
 export default function PreferencesPage() {
   return (
     <AppShell title="Preferences">
-      <ComingSoon />
+      <PreferencesView />
     </AppShell>
   );
 }
