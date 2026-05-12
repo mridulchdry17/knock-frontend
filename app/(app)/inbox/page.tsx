@@ -1,10 +1,12 @@
+"use client";
+
 import { AppShell } from "@/components/shell/app-shell";
-import { ComingSoon } from "@/components/knock/coming-soon";
+import { InboxView } from "@/components/knock/inbox-view";
 
 export default function InboxPage() {
   return (
     <AppShell title="Inbox">
-      <ComingSoon />
+      <InboxView />
     </AppShell>
   );
 }

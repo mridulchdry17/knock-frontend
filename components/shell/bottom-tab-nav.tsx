@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MOBILE_TABS } from "@/components/shell/nav-config";
+import { useInboxUnreadCount } from "@/lib/inbox/use-unread-count";
 
 export function BottomTabNav() {
   const pathname = usePathname() ?? "";
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const inboxUnread = useInboxUnreadCount();
 
   return (
     <nav
@@ -28,7 +30,16 @@ export function BottomTabNav() {
                   active ? "text-flint" : "text-ink-3",
                 )}
               >
-                <Icon size={20} aria-hidden />
+                <span className="relative inline-flex">
+                  <Icon size={20} aria-hidden />
+                  {tab.href === "/inbox" && inboxUnread > 0 ? (
+                    <span
+                      aria-label={`${inboxUnread} unread`}
+                      data-testid="bottom-tab-inbox-dot"
+                      className="absolute -right-1 -top-0.5 h-2 w-2 rounded-pill bg-ember"
+                    />
+                  ) : null}
+                </span>
                 <span>{tab.label}</span>
               </Link>
             </li>
