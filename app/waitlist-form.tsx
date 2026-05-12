@@ -45,10 +45,10 @@ export default function WaitlistForm() {
       const msg =
         code === "validation_error" || code === "invalid_email"
           ? "Enter a valid email address."
-          : data?.error?.message ?? "Something went wrong. Try again.";
+          : data?.error?.message ?? "We hit a snag. Try again in a moment.";
       setState({ kind: "err", msg });
     } catch {
-      setState({ kind: "err", msg: "Network error. Try again." });
+      setState({ kind: "err", msg: "We hit a snag. Try again in a moment." });
     }
   }
 

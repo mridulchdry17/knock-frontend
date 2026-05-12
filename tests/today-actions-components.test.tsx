@@ -231,12 +231,17 @@ describe("<CardEditor /> autosave", () => {
 });
 
 describe("<KeyboardShortcutsDialog />", () => {
-  it("renders all shortcuts when open", () => {
+  it("renders categorized shortcuts when open", () => {
     render(<KeyboardShortcutsDialog open onOpenChange={vi.fn()} />);
     expect(screen.getByText("Keyboard shortcuts")).toBeInTheDocument();
-    expect(screen.getByText("Next card or thread")).toBeInTheDocument();
-    expect(screen.getByText("Open inline editor (Today)")).toBeInTheDocument();
+    // Categories
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Inbox")).toBeInTheDocument();
+    expect(screen.getByText("Global")).toBeInTheDocument();
+    // Sample bindings
+    expect(screen.getByText("Open inline editor")).toBeInTheDocument();
     expect(screen.getByText("Send today's batch")).toBeInTheDocument();
+    expect(screen.getByText("Open selected thread")).toBeInTheDocument();
   });
 
   it("hidden when open=false", () => {

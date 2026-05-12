@@ -3,19 +3,12 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
 import { useTheme, type Theme } from "@/components/theme/theme-provider";
-import { disconnectGmail, startGmailOAuth } from "@/lib/auth/gmail";
+import { startGmailOAuth } from "@/lib/auth/gmail";
 import { PreferencesSection } from "@/components/preferences/section";
+import { DisconnectGmailDialog } from "@/components/knock/disconnect-gmail-dialog";
 
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: "light", label: "Paper" },
@@ -24,26 +17,11 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
 ];
 
 export function AccountSection() {
-  const { user, refresh, signOutRemote } = useAuth();
+  const { user, signOutRemote } = useAuth();
   const { theme, setTheme } = useTheme();
   const [disconnectOpen, setDisconnectOpen] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
 
   if (!user) return null;
-
-  async function handleConfirmDisconnect() {
-    setDisconnecting(true);
-    try {
-      await disconnectGmail();
-      await refresh();
-      setDisconnectOpen(false);
-      toast("Gmail disconnected.");
-    } catch {
-      toast("We hit a snag. Try again in a moment.");
-    } finally {
-      setDisconnecting(false);
-    }
-  }
 
   async function handleSignOut() {
     toast("Signed out. Come back soon.");
@@ -135,32 +113,11 @@ export function AccountSection() {
         </div>
       </div>
 
-      <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
-        <DialogContent aria-describedby="prefs-disconnect-desc">
-          <DialogHeader>
-            <DialogTitle>Disconnect Gmail?</DialogTitle>
-            <DialogDescription id="prefs-disconnect-desc">
-              Knock won&apos;t be able to send until you reconnect.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setDisconnectOpen(false)}
-              disabled={disconnecting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleConfirmDisconnect()}
-              disabled={disconnecting}
-            >
-              {disconnecting ? "Disconnecting…" : "Disconnect Gmail"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DisconnectGmailDialog
+        open={disconnectOpen}
+        onOpenChange={setDisconnectOpen}
+        describedById="prefs-disconnect-desc"
+      />
     </PreferencesSection>
   );
 }

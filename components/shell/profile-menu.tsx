@@ -12,19 +12,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
 import { TierBadge } from "@/components/knock/tier-badge";
 import { ThemeToggleRow } from "@/components/shell/theme-toggle-row";
-import { disconnectGmail } from "@/lib/auth/gmail";
+import { DisconnectGmailDialog } from "@/components/knock/disconnect-gmail-dialog";
 
 function initials(name: string | null | undefined, email: string): string {
   const source = (name ?? email).trim();
@@ -34,29 +25,14 @@ function initials(name: string | null | undefined, email: string): string {
 }
 
 export function ProfileMenu() {
-  const { user, signOutRemote, refresh } = useAuth();
+  const { user, signOutRemote } = useAuth();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
   if (!user) return null;
 
   async function handleSignOut() {
     // Fire toast first so it shows even after the redirect kicks in.
     toast("Signed out. Come back soon.");
     await signOutRemote();
-  }
-
-  async function handleConfirmDisconnect() {
-    setDisconnecting(true);
-    try {
-      await disconnectGmail();
-      await refresh();
-      setConfirmOpen(false);
-      toast("Gmail disconnected.");
-    } catch {
-      toast("We hit a snag. Try again in a moment.");
-    } finally {
-      setDisconnecting(false);
-    }
   }
 
   return (
@@ -117,32 +93,11 @@ export function ProfileMenu() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent aria-describedby="disconnect-gmail-desc">
-          <DialogHeader>
-            <DialogTitle>Disconnect Gmail?</DialogTitle>
-            <DialogDescription id="disconnect-gmail-desc">
-              Knock won&apos;t be able to send until you reconnect.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setConfirmOpen(false)}
-              disabled={disconnecting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleConfirmDisconnect()}
-              disabled={disconnecting}
-            >
-              {disconnecting ? "Disconnecting…" : "Disconnect Gmail"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DisconnectGmailDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        describedById="profile-menu-disconnect-desc"
+      />
     </>
   );
 }
