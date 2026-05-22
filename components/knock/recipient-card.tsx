@@ -193,7 +193,11 @@ export function RecipientCard({
       ) : null}
 
       <footer className="flex flex-wrap items-center gap-2">
-        <Badge tone="neutral">Template: {item.template_name}</Badge>
+        {item.template_name ? (
+          <Badge tone="neutral">Template: {item.template_name}</Badge>
+        ) : (
+          <Badge tone="neutral">Default message</Badge>
+        )}
         {!autopilot && onEditCard ? (
           <button
             type="button"

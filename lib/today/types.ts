@@ -13,6 +13,9 @@ export const TodayCardStatusSchema = z.enum([
   "sent",
   "cooldown",
   "held",
+  // Backend can also surface these once the send worker / reply ingestor run.
+  "failed",
+  "replied",
 ]);
 export type TodayCardStatus = z.infer<typeof TodayCardStatusSchema>;
 
@@ -30,8 +33,10 @@ export type Recipient = z.infer<typeof RecipientSchema>;
 export const TodayItemSchema = z.object({
   id: z.string(),
   recipient: RecipientSchema,
-  template_id: z.string(),
-  template_name: z.string(),
+  // v0 has no templates table — the backend sends null and renders a hardcoded
+  // default body. These go non-null once real templates ship (B5.7+).
+  template_id: z.string().nullable(),
+  template_name: z.string().nullable(),
   subject: z.string(),
   body_preview: z.string(),
   body: z.string(),
