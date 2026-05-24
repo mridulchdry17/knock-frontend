@@ -3,7 +3,8 @@ import { SmartHomeRedirect } from "./smart-home-redirect";
 import { SignInLink } from "./sign-in-link";
 import { Wordmark } from "@/components/landing/wordmark";
 import { SectionLabel } from "@/components/landing/section-label";
-import { BatchPreview } from "@/components/landing/batch-preview";
+import { TemplateResolve } from "@/components/landing/template-resolve";
+import { LandingVariableChip } from "@/components/landing/landing-variable-chip";
 
 /* ─────────────────────────── small section helpers ─────────────────────────── */
 
@@ -22,32 +23,36 @@ const STEPS = [
   {
     n: "01",
     title: "Connect your Gmail",
-    body: "Your emails send from your real address, signed with your name — so they land like a person wrote them.",
+    body: "Emails send from your real address, signed with your name — so they land like a person wrote them, because one did.",
   },
   {
     n: "02",
-    title: "Review today's batch",
-    body: "Each day you get a few people worth reaching out to. You read every one and choose who gets an email.",
+    title: "Get a short daily batch",
+    body: "Each morning, a few recruiters and alumni worth reaching out to — picked for you. No list-building, no scraping.",
   },
   {
     n: "03",
-    title: "Send, then follow up",
-    body: "Make the template your own, hit send, and let Knock remind you when it's time for a gentle follow-up.",
+    title: "Make it yours, then send",
+    body: "Fill in their name, company and role, tweak the words until they sound like you, read every one — and press send.",
   },
 ];
 
 const FAQS = [
   {
-    q: "Is this going to make me look spammy?",
-    a: "The opposite is the point. You get a small, reviewed batch instead of a giant list, help writing a real message, and a lock so a whole campus never piles into one inbox. Fewer emails, each one better.",
+    q: "Does Knock write my emails with AI?",
+    a: "No — you write the message, in your own words. Knock only fills in who it's going to (their name, company, and role), and you read every email before it sends. Nothing is auto-written.",
   },
   {
-    q: "Is it really free?",
-    a: "Yes. Knock is free to use right now.",
+    q: "Is this going to make me look spammy?",
+    a: "The opposite is the point. You get a small, reviewed batch instead of a giant list, you write a real message in your voice, and a lock keeps a whole campus from piling into one inbox. Fewer emails, each one better.",
   },
   {
     q: "Do you send emails without me seeing them?",
     a: "By default, no — you read and approve every email before it goes out. There's an optional mode you can turn on later that sends the batch you've already set up, on limits you choose, and it steps back the moment someone replies. It stays off until you choose it.",
+  },
+  {
+    q: "Is it really free?",
+    a: "Yes. Knock is free to use right now.",
   },
   {
     q: "What happens to my Gmail and my privacy?",
@@ -80,43 +85,82 @@ export default function Page() {
       <main id="main" className="mx-auto max-w-5xl px-6">
         {/* ───────────────── hero ───────────────── */}
         <section className="grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-12 lg:gap-12 lg:py-24">
-          <div className="lg:col-span-7">
+          <div className="lg:order-1 lg:col-span-5">
             <p className="mb-5 font-mono text-caption uppercase text-ink-3">
               For your first internship hunt
             </p>
             <h1 className="text-h1 font-semibold tracking-tight text-ink sm:text-display">
-              Send the email you&apos;ve
-              <br className="hidden sm:block" /> been putting off
+              Write it once.
+              <br className="hidden sm:block" /> It still sounds like you
               <span className="text-ember">.</span>
             </h1>
             <p className="mt-5 max-w-xl text-body text-ink-2">
-              Knock hands you a short, reviewed list of recruiters and alumni
-              worth reaching out to — and helps you write the message so it
-              actually sounds like you.
+              You write one short message in your own words. Knock fills in each
+              person&apos;s name, company and role — and you read every one
+              before it sends, from your own Gmail.
             </p>
 
             <div className="mt-8 max-w-md">
               <WaitlistForm />
               <p className="mt-3 text-caption text-ink-3">
-                We never send anything you haven&apos;t read and approved. Free
-                while we&apos;re in early access.
+                You write it; we never auto-write a word. Free while we&apos;re
+                in early access.
               </p>
             </div>
           </div>
 
-          {/* product artifact + margin notes */}
-          <div className="lg:col-span-5">
-            <BatchPreview className="animate-fade-in" />
+          {/* the personalization artifact — now the hero */}
+          <div className="lg:order-2 lg:col-span-7">
+            <TemplateResolve className="animate-fade-in" />
             <div className="mt-4 space-y-1.5">
-              <Annotation>up to 20 a day, picked for you each morning</Annotation>
+              <Annotation>your sentence, their details — filled in for you</Annotation>
               <Annotation>you press send — never us</Annotation>
             </div>
           </div>
         </section>
 
-        {/* ───────────────── 01 how it works ───────────────── */}
+        {/* ───────────────── 01 sounds like you ───────────────── */}
+        <section className="border-t border-line py-14 sm:py-20" aria-labelledby="voice">
+          <SectionLabel index="01">Sounds like you</SectionLabel>
+          <h2 id="voice" className="mt-4 max-w-xl text-h1 font-semibold tracking-tight text-ink">
+            Your words. Their details. Not a form letter.
+          </h2>
+          <p className="mt-4 max-w-xl text-body text-ink-2">
+            Start from a template built for students reaching out for the first
+            time, then make each one sound like you. Same effort — one reads like
+            a template, one reads like a person.
+          </p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-md border border-line bg-paper-2 p-card">
+              <p className="font-mono text-caption uppercase text-ink-3">
+                What a recruiter usually gets
+              </p>
+              <p className="mt-3 text-small italic text-ink-3">
+                &ldquo;Dear Sir/Madam, I am writing to express my interest in
+                opportunities at your esteemed organization…&rdquo;
+              </p>
+            </div>
+            <div className="rounded-md border border-line-2 bg-paper p-card shadow-xs">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-mono text-caption uppercase text-flint">
+                  What you&apos;d actually say
+                </p>
+                <span className="font-mono text-caption text-ink-3">
+                  from <LandingVariableChip name="first_name" />
+                </span>
+              </div>
+              <p className="mt-3 text-small text-ink">
+                &ldquo;Hi Priya — I rebuilt my portfolio around design systems
+                after seeing Figma&apos;s work on Dev Mode, and I&apos;d love to
+                ask you one question about breaking in…&rdquo;
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ───────────────── 02 how it works ───────────────── */}
         <section className="border-t border-line py-14 sm:py-20" aria-labelledby="how">
-          <SectionLabel index="01">How it works</SectionLabel>
+          <SectionLabel index="02">How it works</SectionLabel>
           <h2 id="how" className="mt-4 max-w-xl text-h1 font-semibold tracking-tight text-ink">
             Three steps, and none of them is &ldquo;stare at a blank box.&rdquo;
           </h2>
@@ -169,39 +213,6 @@ export default function Page() {
                   as soon as someone replies.
                 </p>
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ───────────────── 02 your voice ───────────────── */}
-        <section className="border-t border-line py-14 sm:py-20" aria-labelledby="voice">
-          <SectionLabel index="02">Your voice</SectionLabel>
-          <h2 id="voice" className="mt-4 max-w-xl text-h1 font-semibold tracking-tight text-ink">
-            You&apos;re never staring at a blank box.
-          </h2>
-          <p className="mt-4 max-w-xl text-body text-ink-2">
-            Start from templates built for students reaching out for the first
-            time, then make each one sound like you. The difference shows.
-          </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-md border border-line bg-paper-2 p-card">
-              <p className="font-mono text-caption uppercase text-ink-3">
-                Everyone else
-              </p>
-              <p className="mt-3 text-small italic text-ink-3">
-                &ldquo;Dear Sir/Madam, I am writing to express my interest in
-                opportunities at your esteemed organization…&rdquo;
-              </p>
-            </div>
-            <div className="rounded-md border border-line-2 bg-paper p-card shadow-xs">
-              <p className="font-mono text-caption uppercase text-flint">
-                With Knock
-              </p>
-              <p className="mt-3 text-small text-ink">
-                &ldquo;Hi Priya — I rebuilt my portfolio around design systems
-                after seeing Figma&apos;s work on Dev Mode, and I&apos;d love to
-                ask you one question about breaking in…&rdquo;
-              </p>
             </div>
           </div>
         </section>
@@ -261,7 +272,7 @@ export default function Page() {
               <ul className="mt-4 space-y-2.5 text-small text-ink-2">
                 <li className="flex gap-2.5">
                   <span aria-hidden="true" className="text-ink-3">—</span>
-                  Send anything you didn&apos;t set up yourself
+                  Write or send anything you didn&apos;t set up yourself
                 </li>
                 <li className="flex gap-2.5">
                   <span aria-hidden="true" className="text-ink-3">—</span>
