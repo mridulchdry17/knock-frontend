@@ -90,6 +90,8 @@ describe("<RecipientCard />", () => {
         sent: "Sent",
         cooldown: "Cooldown",
         held: "Held",
+        failed: "Failed",
+        replied: "Replied",
       };
       expect(screen.getByLabelText(`Status: ${labelMap[status]}`)).toBeInTheDocument();
     },

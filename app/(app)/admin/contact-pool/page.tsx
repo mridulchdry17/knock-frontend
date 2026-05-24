@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/shell/app-shell";
-import { ComingSoon } from "@/components/knock/coming-soon";
+import { ContactPoolView } from "@/components/admin/contact-pool-view";
 
 export default function AdminContactPoolPage() {
   return (
     <AppShell title="Contact pool">
-      <ComingSoon />
+      <ContactPoolView />
     </AppShell>
   );
 }

@@ -1,5 +1,14 @@
 import * as React from "react";
-import { Check, Circle, CircleCheck, CircleSlash, Clock, PauseCircle } from "lucide-react";
+import {
+  Check,
+  Circle,
+  CircleCheck,
+  CircleSlash,
+  CircleX,
+  Clock,
+  MailCheck,
+  PauseCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TodayCardStatus } from "@/lib/today/types";
 
@@ -46,6 +55,16 @@ const VARIANTS: Record<
     classes: "bg-bordeaux-tint text-bordeaux border-transparent",
     Icon: PauseCircle,
   },
+  failed: {
+    label: "Failed",
+    classes: "bg-bordeaux-tint text-bordeaux border-transparent",
+    Icon: CircleX,
+  },
+  replied: {
+    label: "Replied",
+    classes: "bg-moss-tint text-moss border-transparent",
+    Icon: MailCheck,
+  },
 };
 
 export function StatusPill({ status, className }: StatusPillProps) {
@@ -76,7 +95,10 @@ export function statusDotColorClass(status: TodayCardStatus): string {
     case "cooldown":
       return "bg-ochre";
     case "held":
+    case "failed":
       return "bg-bordeaux";
+    case "replied":
+      return "bg-moss";
     case "skipped":
       return "bg-ink-3";
     case "default":
