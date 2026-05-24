@@ -53,17 +53,32 @@ describe("<AvatarStrip />", () => {
 });
 
 describe("<RecipientCard />", () => {
-  it("renders default state with name, role, company, subject, template badge", () => {
-    render(<RecipientCard item={makeItem()} />);
+  it("renders expanded state with name, role, company, subject, template badge", () => {
+    render(<RecipientCard item={makeItem()} defaultExpanded />);
     expect(screen.getByText("Sarah Chen")).toBeInTheDocument();
     expect(screen.getByText(/Recruiter · Stripe/)).toBeInTheDocument();
     expect(screen.getByText("Quick intro")).toBeInTheDocument();
     expect(screen.getByText(/Template: Recruiter intro/)).toBeInTheDocument();
   });
 
+  it("collapsed row is the default and expands on click", () => {
+    render(<RecipientCard item={makeItem()} />);
+    // Collapsed: name + a one-line "role · company — subject" summary, no template badge.
+    expect(screen.getByText("Sarah Chen")).toBeInTheDocument();
+    expect(screen.queryByText(/Template: Recruiter intro/)).not.toBeInTheDocument();
+    // Click the row → expands to the full card.
+    fireEvent.click(screen.getByRole("button", { name: /Review Sarah Chen/ }));
+    expect(screen.getByText(/Template: Recruiter intro/)).toBeInTheDocument();
+  });
+
   it("renders cooldown copy with locked phrasing", () => {
     const cooldownIso = new Date(Date.now() + 32 * 3600 * 1000).toISOString();
-    render(<RecipientCard item={makeItem({ status: "cooldown", cooldown_until: cooldownIso })} />);
+    render(
+      <RecipientCard
+        item={makeItem({ status: "cooldown", cooldown_until: cooldownIso })}
+        defaultExpanded
+      />,
+    );
     expect(screen.getByText(/was contacted from this platform/)).toBeInTheDocument();
     expect(screen.getByText(/Available to reach in/)).toBeInTheDocument();
   });

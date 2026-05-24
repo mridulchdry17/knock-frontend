@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ interface RecipientCardProps {
   className?: string;
   /** When true, this card is the keyboard-active one (Flint ring outline). */
   isActive?: boolean;
+  /** Render expanded on mount instead of the collapsed triage row. */
+  defaultExpanded?: boolean;
   /**
    * Externally-controlled editor open state. The page owns this so keyboard `E`
    * can flip it from outside. When undefined, editor toggles via the local Edit
@@ -80,9 +82,9 @@ export function RecipientCard({
   cardRef,
   className,
   isActive,
+  defaultExpanded,
   editorOpen,
   onEditorOpenChange,
-  onMarkReady,
   onMarkSkipped,
   onMarkDefault,
   onEditCard,
@@ -102,6 +104,11 @@ export function RecipientCard({
     else setInternalEditing(v);
   };
 
+  // Triage view: cards start COLLAPSED (compact row) and expand to the full
+  // review/edit view on click. Editing always forces expanded.
+  const [localExpanded, setLocalExpanded] = React.useState(defaultExpanded ?? false);
+  const expanded = editing || localExpanded;
+
   // Sent: collapsed single-line summary, ink-3 13px.
   if (status === "sent" && !autopilot) {
     return (
@@ -115,6 +122,52 @@ export function RecipientCard({
         aria-label={`Sent to ${displayName} at ${item.sent_at ? formatSendTime(item.sent_at) : sendTimeLabel}`}
       >
         Sent to {displayName} at {item.sent_at ? formatSendTime(item.sent_at) : sendTimeLabel}
+      </article>
+    );
+  }
+
+  // Collapsed triage row — scan many fast, click to expand into the full card.
+  if (!expanded) {
+    return (
+      <article
+        ref={cardRef ?? undefined}
+        data-card-id={item.id}
+        className={cn(
+          "rounded-md border bg-paper shadow-xs",
+          status === "ready" && "border-l-[3px] border-l-flint border-line",
+          status === "skipped" && "border-dashed border-line opacity-60",
+          (status === "default" || status === "cooldown" || status === "held") &&
+            "border-line",
+          isActive && "ring-2 ring-flint ring-offset-1 ring-offset-paper",
+          className,
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => setLocalExpanded(true)}
+          aria-expanded={false}
+          aria-label={`Review ${displayName} — ${item.subject}`}
+          className="flex w-full items-start gap-3 px-card py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded-md"
+        >
+          <Avatar className="h-9 w-9 shrink-0">
+            {recipient.avatar_url ? <AvatarImage src={recipient.avatar_url} alt="" /> : null}
+            <AvatarFallback>{initials(recipient.name, recipient.email)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate text-[15px] font-medium leading-5 text-ink">
+                {displayName}
+              </span>
+              <StatusPill status={status === "sent" && autopilot ? "sent" : status} />
+              <ChevronDown className="h-4 w-4 shrink-0 text-ink-3" aria-hidden />
+            </div>
+            <p className="mt-0.5 truncate text-small text-ink-2">
+              {recipient.role ? `${recipient.role} · ` : ""}
+              {recipient.company}
+              {item.subject ? ` — ${item.subject}` : ""}
+            </p>
+          </div>
+        </button>
       </article>
     );
   }
@@ -136,7 +189,17 @@ export function RecipientCard({
       )}
       aria-label={`Card for ${displayName}`}
     >
-      <div className="absolute right-card top-card">
+      <div className="absolute right-card top-card flex items-center gap-2">
+        {!editing ? (
+          <button
+            type="button"
+            onClick={() => setLocalExpanded(false)}
+            aria-label="Collapse card"
+            className="rounded-sm p-0.5 text-ink-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <ChevronUp className="h-4 w-4" aria-hidden />
+          </button>
+        ) : null}
         <StatusPill
           status={status === "sent" && autopilot ? "sent" : status}
         />
@@ -260,7 +323,6 @@ export function RecipientCard({
         item={item}
         editing={editing}
         autopilot={autopilot}
-        onMarkReady={onMarkReady}
         onMarkSkipped={onMarkSkipped}
         onMarkDefault={onMarkDefault}
         onOpenEditor={onEditCard ? () => setEditing(true) : undefined}
@@ -275,7 +337,6 @@ function ActionRow({
   item,
   editing,
   autopilot,
-  onMarkReady,
   onMarkSkipped,
   onMarkDefault,
   onOpenEditor,
@@ -285,7 +346,6 @@ function ActionRow({
   item: TodayItem;
   editing: boolean;
   autopilot?: boolean;
-  onMarkReady?: (id: string) => void;
   onMarkSkipped?: (id: string) => void;
   onMarkDefault?: (id: string) => void;
   onOpenEditor?: () => void;
@@ -322,29 +382,10 @@ function ActionRow({
     );
   }
 
-  if (item.status === "ready") {
-    return (
-      <div className="flex flex-wrap justify-end gap-2">
-        {onOpenEditor ? (
-          <Button variant="ghost" size="sm" onClick={onOpenEditor}>
-            Edit
-          </Button>
-        ) : null}
-        {onMarkSkipped ? (
-          <Button variant="ghost" size="sm" onClick={() => onMarkSkipped(item.id)}>
-            Skip
-          </Button>
-        ) : null}
-        {onMarkDefault ? (
-          <Button variant="ghost" size="sm" onClick={() => onMarkDefault(item.id)}>
-            Unmark ready
-          </Button>
-        ) : null}
-      </div>
-    );
-  }
-
-  // default
+  // "In" (default OR ready) — skip-then-send model: no "Mark ready" busywork.
+  // Every In card sends unless skipped; the only per-card actions are Edit and
+  // Skip. (onMarkReady is retained on the prop for the bulk send-all flow but
+  // is no longer a per-card button.)
   return (
     <div className="flex flex-wrap justify-end gap-2">
       {onOpenEditor ? (
@@ -357,13 +398,7 @@ function ActionRow({
           Skip
         </Button>
       ) : null}
-      {onMarkReady ? (
-        <Button size="sm" onClick={() => onMarkReady(item.id)}>
-          Mark ready
-        </Button>
-      ) : null}
-      {/* onCloseEditor is referenced only when editing renders the editor; included
-          in props for future use, intentionally unused here. */}
+      {/* onCloseEditor reserved for the editor path; intentionally unused here. */}
       {onCloseEditor ? null : null}
     </div>
   );

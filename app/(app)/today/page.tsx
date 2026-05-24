@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { Mail } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/shell/app-shell";
 import { GmailDisconnectedBanner } from "@/components/gmail/gmail-disconnected-banner";
 import { TodayHeader } from "@/components/knock/today-header";
 import { TodayAutopilotHeader } from "@/components/knock/today-autopilot-header";
-import { AvatarStrip } from "@/components/knock/avatar-strip";
 import { RecipientCard } from "@/components/knock/recipient-card";
+import { RosterRow } from "@/components/knock/roster-row";
 import { TodayEmptyState } from "@/components/knock/today-empty-state";
 import { UndoToast } from "@/components/knock/undo-toast";
 import { useGlobalShortcuts } from "@/components/knock/global-shortcuts";
@@ -127,17 +128,28 @@ export default function TodayPage() {
           cap={cap}
           sentToday={sent}
           loading={today.status === "loading"}
-          readyCount={today.readyCount}
-          defaultCount={
-            today.data?.items.filter((i) => i.status === "default").length ?? 0
+          // Skip-then-send: "In" = everything not skipped/sent. Send is enabled
+          // whenever there's anything In, and dispatches all of it.
+          readyCount={
+            today.data?.items.filter(
+              (i) => i.status === "default" || i.status === "ready",
+            ).length ?? 0
           }
-          onSend={() => beginSendWithToast(today)}
-          onMarkAllReady={() => {
-            void today.markAllReady();
+          onSend={() => {
+            // Mark every In card ready, then dispatch — "send all non-skipped".
+            void today.markAllReady().finally(() => beginSendWithToast(today));
           }}
           showShortcutHint={shortcutHint}
         />
       )}
+      {!isAutopilot && !isAutopilotPaused && user?.email ? (
+        <div className="mx-auto flex max-w-[1100px] items-center gap-1.5 px-gutter pt-3 text-caption text-ink-3 lg:px-8">
+          <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="truncate">
+            Sending as {user.name ?? user.email} · {user.email}
+          </span>
+        </div>
+      ) : null}
       {today.status === "error" && today.error ? (
         <ErrorBanner message={today.error.message} onRetry={today.retry} />
       ) : null}
@@ -239,14 +251,12 @@ function PageBody({
 }: PageBodyProps) {
   if (status === "loading") {
     return (
-      <>
-        <AvatarStrip items={[]} cap={7} loading />
-        <div className="mx-auto flex max-w-[880px] flex-col gap-6 px-gutter py-6 lg:px-8">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full" />
-          ))}
-        </div>
-      </>
+      <div className="mx-auto flex max-w-[880px] flex-col gap-3 px-gutter py-6 lg:px-8">
+        <Skeleton className="h-48 w-full" />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-14 w-full" />
+        ))}
+      </div>
     );
   }
 
@@ -335,32 +345,15 @@ function PopulatedView({
   const [activeId, setActiveId] = React.useState<string | null>(data.items[0]?.id ?? null);
   const [editorOpenId, setEditorOpenId] = React.useState<string | null>(null);
 
+  // Accordion model: `activeId` is the EXPANDED row (full card); all others
+  // render as compact CollapsedRows. Jumping (keyboard or click) expands the
+  // target and scrolls it into view on the next paint.
   const onJump = React.useCallback((id: string) => {
-    const el = cardRefs.current.get(id);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
     setActiveId(id);
+    requestAnimationFrame(() => {
+      cardRefs.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }, []);
-
-  React.useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let best: IntersectionObserverEntry | null = null;
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          if (!best || entry.intersectionRatio > best.intersectionRatio) best = entry;
-        }
-        if (best) {
-          const id = (best.target as HTMLElement).dataset.cardId;
-          if (id) setActiveId(id);
-        }
-      },
-      { threshold: [0.4, 0.7], rootMargin: "-30% 0px -30% 0px" },
-    );
-    cardRefs.current.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [data.items]);
 
   // Wrap mutation handlers with locked snag voice.
   const wrapWithSnag = React.useCallback(
@@ -411,24 +404,42 @@ function PopulatedView({
     disabled: autopilot || editorOpenId !== null,
   });
 
+  const selectedItem =
+    data.items.find((i) => i.id === activeId) ?? data.items[0] ?? null;
+
   return (
-    <>
-      <div className="sticky top-24 z-10 border-b border-line bg-paper/80 backdrop-blur">
-        <AvatarStrip items={data.items} activeId={activeId} cap={data.cap} onJump={onJump} />
-      </div>
-      <div className="mx-auto flex max-w-[880px] flex-col gap-6 px-gutter py-6 lg:px-8">
+    <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-gutter py-6 lg:flex-row lg:items-start lg:gap-6 lg:px-8">
+      {/* Roster — the "who". Tight, scannable; the message is the same template
+          for everyone, so the recipient is what the user evaluates. */}
+      <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-[340px] lg:shrink-0 lg:overflow-y-auto">
         {!autopilot ? <FirstBatchBanner /> : null}
-        {data.items.map((item) => (
+        <div className="overflow-hidden rounded-md border border-line bg-paper">
+          {data.items.map((item) => (
+            <RosterRow
+              key={item.id}
+              item={item}
+              selected={item.id === activeId}
+              onSelect={onJump}
+              onSkip={!autopilot ? onMarkSkipped : autopilotActive ? onAutopilotSkip : undefined}
+              onUnskip={!autopilot ? onMarkDefault : undefined}
+              rowRef={(el) => {
+                if (el) cardRefs.current.set(item.id, el);
+                else cardRefs.current.delete(item.id);
+              }}
+            />
+          ))}
+        </div>
+      </aside>
+
+      {/* Reading pane — the selected person's actual email + actions. */}
+      <div className="min-w-0 flex-1">
+        {selectedItem ? (
           <RecipientCard
-            key={item.id}
-            item={item}
-            isActive={item.id === activeId}
-            editorOpen={editorOpenId === item.id}
-            onEditorOpenChange={(open) => setEditorOpenId(open ? item.id : null)}
-            cardRef={(el) => {
-              if (el) cardRefs.current.set(item.id, el);
-              else cardRefs.current.delete(item.id);
-            }}
+            key={selectedItem.id}
+            item={selectedItem}
+            defaultExpanded
+            editorOpen={editorOpenId === selectedItem.id}
+            onEditorOpenChange={(open) => setEditorOpenId(open ? selectedItem.id : null)}
             autopilot={autopilot}
             onMarkReady={!autopilot ? onMarkReady : undefined}
             onMarkSkipped={!autopilot ? onMarkSkipped : undefined}
@@ -436,9 +447,9 @@ function PopulatedView({
             onEditCard={!autopilot ? editCard : undefined}
             onAutopilotSkip={autopilotActive ? onAutopilotSkip : undefined}
           />
-        ))}
+        ) : null}
       </div>
-    </>
+    </div>
   );
 }
 
