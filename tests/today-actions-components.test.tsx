@@ -32,24 +32,27 @@ function makeItem(overrides: Partial<TodayItem> = {}): TodayItem {
 }
 
 describe("<RecipientCard /> action layer", () => {
-  it("default state renders Mark ready + Skip + Edit buttons", () => {
+  // Skip-then-send model: cards have NO "Mark ready" — every In card sends
+  // unless skipped. Per-card actions are just Edit + Skip.
+  it("In (default) card renders Edit + Skip, and NO Mark ready", () => {
     render(
       <RecipientCard
         item={makeItem()}
-        onMarkReady={vi.fn()}
+        defaultExpanded
         onMarkSkipped={vi.fn()}
         onEditCard={vi.fn().mockResolvedValue(makeItem())}
       />,
     );
-    expect(screen.getByRole("button", { name: "Mark ready" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Skip" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skip" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mark ready" })).not.toBeInTheDocument();
   });
 
-  it("ready state renders Edit + Skip + Unmark ready", () => {
+  it("ready card behaves the same as In: Edit + Skip, no Unmark ready", () => {
     render(
       <RecipientCard
         item={makeItem({ status: "ready" })}
+        defaultExpanded
         onMarkSkipped={vi.fn()}
         onMarkDefault={vi.fn()}
         onEditCard={vi.fn().mockResolvedValue(makeItem({ status: "ready" }))}
@@ -57,28 +60,29 @@ describe("<RecipientCard /> action layer", () => {
     );
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Skip" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Unmark ready" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Unmark ready" })).not.toBeInTheDocument();
   });
 
   it("skipped state renders Bring back only", () => {
     render(
-      <RecipientCard item={makeItem({ status: "skipped" })} onMarkDefault={vi.fn()} />,
+      <RecipientCard item={makeItem({ status: "skipped" })} defaultExpanded onMarkDefault={vi.fn()} />,
     );
     expect(screen.getByRole("button", { name: "Bring back" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mark ready" })).not.toBeInTheDocument();
   });
 
-  it("Mark ready click invokes handler with item id", () => {
-    const onMarkReady = vi.fn();
-    render(<RecipientCard item={makeItem()} onMarkReady={onMarkReady} />);
-    fireEvent.click(screen.getByRole("button", { name: "Mark ready" }));
-    expect(onMarkReady).toHaveBeenCalledWith("c1");
+  it("Skip click invokes handler with item id", () => {
+    const onMarkSkipped = vi.fn();
+    render(<RecipientCard item={makeItem()} defaultExpanded onMarkSkipped={onMarkSkipped} />);
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    expect(onMarkSkipped).toHaveBeenCalledWith("c1");
   });
 
   it("autopilot variant renders inline templates note + Skip this one on default cards", () => {
     render(
       <RecipientCard
         item={makeItem({ status: "default" })}
+        defaultExpanded
         autopilot
         onAutopilotSkip={vi.fn()}
       />,
@@ -91,7 +95,7 @@ describe("<RecipientCard /> action layer", () => {
   });
 
   it("send-time chip is a button when editable", () => {
-    render(<RecipientCard item={makeItem()} onEditCard={vi.fn()} />);
+    render(<RecipientCard item={makeItem()} defaultExpanded onEditCard={vi.fn()} />);
     expect(
       screen.getByRole("button", { name: /Send time:/ }),
     ).toBeInTheDocument();

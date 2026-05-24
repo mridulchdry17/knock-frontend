@@ -72,10 +72,10 @@ export function TodayHeader({
             </p>
           ) : null}
           <h1 className="text-h1 text-ink">
-            Today&apos;s batch — {headlineCount} {cap === 1 ? "person" : "people"}.
+            {headlineCount} {cap === 1 ? "email" : "emails"} drafted for today.
           </h1>
           <p className="hidden text-small text-ink-2 lg:block">
-            Approve each one, edit anything, then send when you&apos;re ready.
+            We wrote each one — skim, tweak anything, then send when you&apos;re ready.
           </p>
         </div>
 
