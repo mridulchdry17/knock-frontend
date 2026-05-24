@@ -20,9 +20,9 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Knock — early access",
+  title: "Knock — send the email you've been putting off",
   description:
-    "Reach out from your own Gmail, without two people emailing the same person. Join the waitlist.",
+    "Knock helps students send personalized cold emails to recruiters and alumni from their own Gmail — a small reviewed batch daily, with help writing each one.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

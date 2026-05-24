@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { track } from "@vercel/analytics";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type State =
   | { kind: "idle" }
@@ -13,6 +15,7 @@ type State =
 export default function WaitlistForm() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
+  const inputId = useId();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,9 +32,7 @@ export default function WaitlistForm() {
 
       if (res.ok) {
         // Genuine new signup — fire analytics conversion event.
-        track("waitlist_signup", {
-          domain: email.split("@")[1] ?? "unknown",
-        });
+        track("waitlist_signup", { domain: email.split("@")[1] ?? "unknown" });
         setState({ kind: "ok" });
         return;
       }
@@ -55,20 +56,28 @@ export default function WaitlistForm() {
   if (state.kind === "ok" || state.kind === "already") {
     const title =
       state.kind === "ok"
-        ? "Thanks for joining Knock."
-        : "You're already on the Knock waitlist.";
+        ? "You're on the Knock list."
+        : "You're already on the Knock list.";
     const subtitle =
       state.kind === "ok"
-        ? "We'll knock on your inbox when early access opens."
-        : "We'll knock on your inbox when early access opens — no need to sign up again.";
+        ? "We approve in waves — we'll knock on your inbox when it's your turn."
+        : "No need to sign up twice — we'll knock on your inbox when it's your turn.";
     return (
-      <div className="rounded-lg border border-zinc-200 bg-white p-5">
+      <div
+        aria-live="polite"
+        className="animate-fade-in rounded-md border border-line bg-paper-2 p-5"
+      >
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 h-5 w-5 rounded-full bg-zinc-900 text-white text-xs flex items-center justify-center">✓</div>
+          <span
+            aria-hidden="true"
+            className="mt-0.5 grid h-5 w-5 place-items-center rounded-full bg-moss text-[11px] text-paper"
+          >
+            ✓
+          </span>
           <div>
-            <p className="text-sm font-medium text-zinc-900">{title}</p>
-            <p className="mt-1 text-sm text-zinc-600">
-              {subtitle} <span className="text-zinc-900">{email}</span>
+            <p className="text-body font-medium text-ink">{title}</p>
+            <p className="mt-1 text-small text-ink-2">
+              {subtitle} <span className="text-ink">{email}</span>
             </p>
           </div>
         </div>
@@ -77,28 +86,36 @@ export default function WaitlistForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
-      <div className="flex flex-col sm:flex-row gap-2">
-        <input
+    <form onSubmit={onSubmit} className="space-y-2">
+      <label htmlFor={inputId} className="sr-only">
+        Your email address
+      </label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          id={inputId}
           type="email"
           required
-          autoFocus
+          inputMode="email"
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@gmail.com"
-          className="flex-1 rounded-md border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 transition"
+          placeholder="you@university.edu"
+          className="h-11 flex-1"
         />
-        <button
+        <Button
           type="submit"
+          size="lg"
           disabled={state.kind === "loading"}
-          className="rounded-md bg-zinc-900 text-white px-4 py-2.5 text-sm font-medium hover:bg-zinc-800 disabled:opacity-60 disabled:cursor-not-allowed transition"
+          className="h-11"
         >
-          {state.kind === "loading" ? "Joining…" : "Get early access"}
-        </button>
+          {state.kind === "loading" ? "Saving…" : "Save my spot"}
+        </Button>
       </div>
-      {state.kind === "err" && (
-        <p className="text-xs text-red-600">{state.msg}</p>
-      )}
+      <p aria-live="polite" className="min-h-[1.25rem]">
+        {state.kind === "err" && (
+          <span className="text-small text-bordeaux">{state.msg}</span>
+        )}
+      </p>
     </form>
   );
 }
