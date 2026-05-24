@@ -48,10 +48,12 @@ export default function OnboardingClient() {
     }
     setStatus({ kind: "loading" });
     try {
-      await claimWaitlist(trimmed);
-      // Tier flipped to free server-side. Re-fetch /me, then route.
+      const result = await claimWaitlist(trimmed);
+      // Re-fetch /me so the route guard sees the new tier, then route by it.
+      // Claiming an APPROVED spot → free → /today. Claiming an entry that's on
+      // the list but not allowed in yet → still pending → /awaiting-approval.
       await refresh();
-      router.replace("/today");
+      router.replace(result.tier === "pending" ? "/awaiting-approval" : "/today");
     } catch (e) {
       if (e instanceof ApiError) {
         if (e.status === 404 || e.code === "not_on_waitlist") {

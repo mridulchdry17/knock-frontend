@@ -1,6 +1,7 @@
 import WaitlistForm from "./waitlist-form";
 import { SmartHomeRedirect } from "./smart-home-redirect";
 import { SignInLink } from "./sign-in-link";
+import { Mark } from "@/components/landing/mark";
 import { Wordmark } from "@/components/landing/wordmark";
 import { SectionLabel } from "@/components/landing/section-label";
 import { BatchPreview } from "@/components/landing/batch-preview";
@@ -70,7 +71,10 @@ export default function Page() {
 
       {/* top bar */}
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-        <Wordmark className="text-2xl" />
+        <div className="flex items-center gap-2">
+          <Mark className="h-7 w-7" />
+          <Wordmark className="text-2xl" />
+        </div>
         <nav className="flex items-center gap-3 text-small text-ink-3">
           <span className="hidden sm:inline">Already invited?</span>
           <SignInLink label="Sign in" />
@@ -321,7 +325,10 @@ export default function Page() {
       <footer className="mx-auto max-w-5xl px-6 py-10">
         <div className="flex flex-col items-start justify-between gap-6 border-t border-line pt-8 sm:flex-row sm:items-center">
           <div>
-            <Wordmark className="text-lg" tilted={false} />
+            <div className="flex items-center gap-2">
+              <Mark className="h-5 w-5" />
+              <Wordmark className="text-lg" tilted={false} />
+            </div>
             <p className="mt-2 text-caption text-ink-3">
               A kinder way to reach out. Made for students sending their first
               cold emails.

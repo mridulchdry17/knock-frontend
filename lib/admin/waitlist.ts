@@ -24,6 +24,26 @@ export async function listWaitlist(params: ListWaitlistParams = {}): Promise<Pag
   return PageOfWaitlistSchema.parse(data);
 }
 
+/** Allow a waitlist entry in (stamps approved_at; promotes a linked pending
+ *  account to free immediately). Returns the updated entry. */
+export async function approveWaitlist(id: string): Promise<AdminWaitlistOut> {
+  const data = await apiFetch<unknown>(
+    `/api/v1/admin/waitlist/${encodeURIComponent(id)}/approve`,
+    { method: "POST", body: {} },
+  );
+  return AdminWaitlistOutSchema.parse(data);
+}
+
+/** Undo an approval (clears approved_at; parks a linked free account back at
+ *  pending). Returns the updated entry. */
+export async function revokeWaitlist(id: string): Promise<AdminWaitlistOut> {
+  const data = await apiFetch<unknown>(
+    `/api/v1/admin/waitlist/${encodeURIComponent(id)}/revoke`,
+    { method: "POST", body: {} },
+  );
+  return AdminWaitlistOutSchema.parse(data);
+}
+
 /**
  * Trigger a CSV download in the browser. Uses fetch (not apiFetch) because the
  * response body is a streaming binary blob, not JSON. We still go through the

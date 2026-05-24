@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EmptyState } from "@/components/knock/empty-state";
-import { downloadWaitlistCsv, listWaitlist } from "@/lib/admin/waitlist";
+import {
+  approveWaitlist,
+  downloadWaitlistCsv,
+  listWaitlist,
+  revokeWaitlist,
+} from "@/lib/admin/waitlist";
 import type { AdminWaitlistOut, Page } from "@/lib/admin/types";
 import { ApiError } from "@/lib/api/errors";
 import { relativeTime } from "@/lib/format/relative-time";
@@ -21,6 +26,7 @@ export function WaitlistView() {
   const [offset, setOffset] = React.useState(0);
   const [reloadKey, setReloadKey] = React.useState(0);
   const [downloading, setDownloading] = React.useState(false);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const reload = () => setReloadKey((k) => k + 1);
 
@@ -52,6 +58,29 @@ export function WaitlistView() {
       toast.error("We hit a snag downloading the CSV.");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const applyApproval = (updated: AdminWaitlistOut) => {
+    setPage((p) =>
+      p ? { ...p, items: p.items.map((it) => (it.id === updated.id ? updated : it)) } : p,
+    );
+  };
+
+  const toggleApproval = async (row: AdminWaitlistOut) => {
+    setBusyId(row.id);
+    try {
+      const updated = row.approved_at
+        ? await revokeWaitlist(row.id)
+        : await approveWaitlist(row.id);
+      applyApproval(updated);
+      toast.success(
+        updated.approved_at ? `Allowed ${row.email} in` : `Revoked access for ${row.email}`,
+      );
+    } catch {
+      toast.error("We hit a snag updating access. Try again.");
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -102,6 +131,8 @@ export function WaitlistView() {
                 <tr>
                   <th className="px-4 py-2 text-left font-medium">Email</th>
                   <th className="px-4 py-2 text-left font-medium">Joined</th>
+                  <th className="px-4 py-2 text-left font-medium">Status</th>
+                  <th className="px-4 py-2 text-right font-medium">Access</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,6 +141,23 @@ export function WaitlistView() {
                     <td className="px-4 py-3 text-ink">{row.email}</td>
                     <td className="px-4 py-3 text-ink-2" title={row.created_at}>
                       {relativeTime(row.created_at)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ApprovalBadge approvedAt={row.approved_at} />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        size="sm"
+                        variant={row.approved_at ? "ghost" : "primary"}
+                        onClick={() => toggleApproval(row)}
+                        disabled={busyId === row.id}
+                      >
+                        {busyId === row.id
+                          ? "Saving…"
+                          : row.approved_at
+                            ? "Revoke"
+                            : "Allow in"}
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -121,9 +169,24 @@ export function WaitlistView() {
           <ul className="space-y-2 lg:hidden">
             {items.map((row) => (
               <li key={row.id} className="rounded-md border border-line bg-paper p-card">
-                <div className="text-body text-ink">{row.email}</div>
-                <div className="mt-1 text-caption text-ink-3" title={row.created_at}>
-                  Joined {relativeTime(row.created_at)}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-body text-ink">{row.email}</div>
+                    <div className="mt-1 text-caption text-ink-3" title={row.created_at}>
+                      Joined {relativeTime(row.created_at)}
+                    </div>
+                    <div className="mt-2">
+                      <ApprovalBadge approvedAt={row.approved_at} />
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={row.approved_at ? "ghost" : "primary"}
+                    onClick={() => toggleApproval(row)}
+                    disabled={busyId === row.id}
+                  >
+                    {busyId === row.id ? "Saving…" : row.approved_at ? "Revoke" : "Allow in"}
+                  </Button>
                 </div>
               </li>
             ))}
@@ -157,5 +220,20 @@ export function WaitlistView() {
         </>
       ) : null}
     </div>
+  );
+}
+
+function ApprovalBadge({ approvedAt }: { approvedAt?: string | null }) {
+  if (approvedAt) {
+    return (
+      <span className="inline-flex items-center rounded-pill bg-moss-tint px-2 py-0.5 text-caption font-medium text-moss">
+        Allowed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-pill border border-line-2 px-2 py-0.5 text-caption text-ink-3">
+      Waiting
+    </span>
   );
 }

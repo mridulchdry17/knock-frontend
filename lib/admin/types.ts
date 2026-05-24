@@ -25,6 +25,8 @@ export const AdminWaitlistOutSchema = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
   email: z.string().email(),
   created_at: z.string(),
+  // null = on the list but not allowed in yet; a timestamp = approved.
+  approved_at: z.string().nullable().optional(),
 });
 export type AdminWaitlistOut = z.infer<typeof AdminWaitlistOutSchema>;
 
