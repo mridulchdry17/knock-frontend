@@ -242,6 +242,9 @@ export function RecipientCard({
         />
       ) : (
         <div className="flex flex-col gap-2">
+          {item.kind === "followup" && item.parent ? (
+            <OriginalThreadContext parent={item.parent} />
+          ) : null}
           <div className="text-h3 text-ink">{item.subject}</div>
           <p className="line-clamp-4 whitespace-pre-line text-body text-ink-2">
             {item.body_preview}
@@ -411,5 +414,35 @@ function CooldownNote({ name, cooldownUntil }: { name: string; cooldownUntil: st
       <strong className="font-medium">{name}</strong> was contacted from this platform {ago}h ago.
       Available to reach in {until}h.
     </p>
+  );
+}
+
+/** Reading-pane block shown above a follow-up draft so the user can refresh
+ *  on what they originally sent. Collapsed by default to keep the pane clean —
+ *  expands to a scrollable view of the original prose. Decorative (the chip in
+ *  the roster + the "Re:" subject already announce "this is a follow-up").
+ */
+function OriginalThreadContext({
+  parent,
+}: {
+  parent: { original_subject: string; original_body: string; original_sent_at: string };
+}) {
+  const daysAgo = Math.max(
+    1,
+    Math.round(
+      (Date.now() - new Date(parent.original_sent_at).getTime()) / (1000 * 60 * 60 * 24),
+    ),
+  );
+  return (
+    <details className="rounded-sm border border-line bg-paper-2 px-3 py-2">
+      <summary className="flex cursor-pointer items-center gap-2 text-small text-ink-2">
+        <span aria-hidden className="text-ink-3">↳</span>
+        Sent {daysAgo} day{daysAgo === 1 ? "" : "s"} ago · no reply yet
+        <span className="ml-auto text-caption text-ink-3">View original</span>
+      </summary>
+      <div className="mt-2 max-h-[180px] overflow-y-auto overscroll-contain whitespace-pre-line text-small text-ink-3">
+        {parent.original_body}
+      </div>
+    </details>
   );
 }
