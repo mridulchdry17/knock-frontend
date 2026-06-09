@@ -27,6 +27,9 @@ export const AdminWaitlistOutSchema = z.object({
   created_at: z.string(),
   // null = on the list but not allowed in yet; a timestamp = approved.
   approved_at: z.string().nullable().optional(),
+  // The tier the entry will grant on sign-in. 'free' by default; admin can
+  // pre-mark 'paid' so the user lands paid without a second per-user click.
+  intended_tier: z.enum(["free", "paid"]).default("free"),
 });
 export type AdminWaitlistOut = z.infer<typeof AdminWaitlistOutSchema>;
 

@@ -70,9 +70,17 @@ describe("/admin/waitlist — WaitlistView", () => {
     });
   });
 
-  it("shows 'Waiting' + 'Allow in' for an un-approved entry, and approves on click", async () => {
+  it("shows 'Waiting' + 'Allow as free' for an un-approved entry, and approves as free on click", async () => {
     listWaitlist.mockResolvedValue({
-      items: [{ id: "7", email: "wait@x.co", created_at: "2025-04-29T00:00:00Z", approved_at: null }],
+      items: [
+        {
+          id: "7",
+          email: "wait@x.co",
+          created_at: "2025-04-29T00:00:00Z",
+          approved_at: null,
+          intended_tier: "free",
+        },
+      ],
       total: 1,
       limit: 50,
       offset: 0,
@@ -82,23 +90,62 @@ describe("/admin/waitlist — WaitlistView", () => {
       email: "wait@x.co",
       created_at: "2025-04-29T00:00:00Z",
       approved_at: "2026-05-25T00:00:00Z",
+      intended_tier: "free",
     });
 
     render(<WaitlistView />);
     await screen.findAllByText("wait@x.co");
     expect(screen.getAllByText("Waiting").length).toBeGreaterThan(0);
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Allow in" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "Allow as free" })[0]);
 
-    await waitFor(() => expect(approveWaitlist).toHaveBeenCalledWith("7"));
-    // Badge flips to "Allowed" after the optimistic local update.
-    await waitFor(() => expect(screen.getAllByText("Allowed").length).toBeGreaterThan(0));
+    await waitFor(() => expect(approveWaitlist).toHaveBeenCalledWith("7", "free"));
+    // Badge flips to "Allowed · Free" after the optimistic local update.
+    await waitFor(() => expect(screen.getAllByText(/Allowed · Free/).length).toBeGreaterThan(0));
+  });
+
+  it("clicking 'as paid' approves with tier='paid' and shows 'Allowed · Paid'", async () => {
+    listWaitlist.mockResolvedValue({
+      items: [
+        {
+          id: "11",
+          email: "vip@x.co",
+          created_at: "2025-04-29T00:00:00Z",
+          approved_at: null,
+          intended_tier: "free",
+        },
+      ],
+      total: 1,
+      limit: 50,
+      offset: 0,
+    });
+    approveWaitlist.mockResolvedValue({
+      id: "11",
+      email: "vip@x.co",
+      created_at: "2025-04-29T00:00:00Z",
+      approved_at: "2026-05-25T00:00:00Z",
+      intended_tier: "paid",
+    });
+
+    render(<WaitlistView />);
+    await screen.findAllByText("vip@x.co");
+
+    await userEvent.click(screen.getAllByRole("button", { name: "as paid" })[0]);
+
+    await waitFor(() => expect(approveWaitlist).toHaveBeenCalledWith("11", "paid"));
+    await waitFor(() => expect(screen.getAllByText(/Allowed · Paid/).length).toBeGreaterThan(0));
   });
 
   it("shows 'Allowed' + 'Revoke' for an approved entry, and revokes on click", async () => {
     listWaitlist.mockResolvedValue({
       items: [
-        { id: "9", email: "in@x.co", created_at: "2025-04-29T00:00:00Z", approved_at: "2026-05-25T00:00:00Z" },
+        {
+          id: "9",
+          email: "in@x.co",
+          created_at: "2025-04-29T00:00:00Z",
+          approved_at: "2026-05-25T00:00:00Z",
+          intended_tier: "free",
+        },
       ],
       total: 1,
       limit: 50,
@@ -109,11 +156,12 @@ describe("/admin/waitlist — WaitlistView", () => {
       email: "in@x.co",
       created_at: "2025-04-29T00:00:00Z",
       approved_at: null,
+      intended_tier: "free",
     });
 
     render(<WaitlistView />);
     await screen.findAllByText("in@x.co");
-    expect(screen.getAllByText("Allowed").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Allowed/).length).toBeGreaterThan(0);
 
     await userEvent.click(screen.getAllByRole("button", { name: "Revoke" })[0]);
 
