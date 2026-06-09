@@ -1,0 +1,113 @@
+import { NextResponse } from "next/server";
+
+/**
+ * Same-origin proxy helper for Next.js Route Handlers.
+ *
+ * Forwards an incoming Request to `${BACKEND_URL}<upstreamPath>`, preserving:
+ *  - HTTP method
+ *  - Authorization header (verbatim, so the bearer token stays opaque)
+ *  - Body bytes (passes through as a buffer; we don't re-JSON.parse)
+ *  - Optional query string (when `forwardQuery: true`, the inbound request's
+ *    search params are appended to the upstream URL — used by /admin/users
+ *    list endpoints that take `?tier=…&search=…&limit=…&offset=…`).
+ *
+ * Returns the upstream response with status + body intact.
+ *  - JSON paths buffer the response (default).
+ *  - When `stream: true`, the body is piped through unbuffered and the upstream
+ *    `Content-Disposition` header is forwarded too (used by /admin/waitlist.csv).
+ *
+ * On network failure: 502 with the locked error envelope.
+ *
+ * `BACKEND_URL` is server-only — never exposed to the browser.
+ */
+
+const SNAG_502 = {
+  error: { code: "upstream_unavailable", message: "We hit a snag." },
+};
+
+const CONFIG_503 = {
+  error: { code: "config_error", message: "Service unavailable." },
+};
+
+interface ProxyOptions {
+  /** Backend path to forward to, e.g. "/api/v1/auth/me". */
+  upstreamPath: string;
+  /** Forward the Authorization header from the inbound request. Default true. */
+  forwardAuth?: boolean;
+  /** Append the inbound URL's search params to the upstream URL. Default false. */
+  forwardQuery?: boolean;
+  /** Stream the upstream response body through unbuffered + forward Content-Disposition. */
+  stream?: boolean;
+}
+
+export async function proxyRequest(
+  req: Request,
+  { upstreamPath, forwardAuth = true, forwardQuery = false, stream = false }: ProxyOptions,
+): Promise<Response> {
+  const backend = process.env.BACKEND_URL;
+  if (!backend) {
+    return NextResponse.json(CONFIG_503, { status: 503 });
+  }
+
+  let url = `${backend.replace(/\/$/, "")}${upstreamPath}`;
+  if (forwardQuery) {
+    const inbound = new URL(req.url);
+    const qs = inbound.search; // includes leading "?" or "" if none
+    if (qs) url += qs;
+  }
+
+  const headers = new Headers();
+  headers.set("X-Requested-With", "XMLHttpRequest");
+  headers.set("User-Agent", req.headers.get("user-agent") ?? "knock-frontend-proxy");
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) headers.set("X-Forwarded-For", xff);
+
+  if (forwardAuth) {
+    const auth = req.headers.get("authorization");
+    if (auth) headers.set("Authorization", auth);
+  }
+
+  const ct = req.headers.get("content-type");
+  if (ct) headers.set("Content-Type", ct);
+
+  const method = req.method.toUpperCase();
+  const hasBody = method !== "GET" && method !== "HEAD";
+
+  let body: BodyInit | undefined;
+  if (hasBody) {
+    const buf = await req.arrayBuffer();
+    body = buf.byteLength > 0 ? buf : undefined;
+  }
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(url, {
+      method,
+      headers,
+      body,
+      cache: "no-store",
+      redirect: "manual",
+    });
+  } catch {
+    return NextResponse.json(SNAG_502, { status: 502 });
+  }
+
+  const respHeaders = new Headers();
+  const upstreamCT = upstream.headers.get("content-type");
+  if (upstreamCT) respHeaders.set("Content-Type", upstreamCT);
+
+  if (stream) {
+    const cd = upstream.headers.get("content-disposition");
+    if (cd) respHeaders.set("Content-Disposition", cd);
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: respHeaders,
+    });
+  }
+
+  const text = await upstream.text();
+  return new Response(text, {
+    status: upstream.status,
+    headers: respHeaders,
+  });
+}

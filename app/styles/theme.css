@@ -1,0 +1,102 @@
+/*
+ * Knock design tokens — light + dark.
+ * Canonical source: project_ui_design_system.md (locked 2026-05-06).
+ * Light is the default. Dark is opt-in via [data-theme="dark"] on <html>.
+ */
+
+:root {
+  /* paper */
+  --paper: #FAF8F4;
+  --paper-2: #F4F1EA;
+
+  /* ink */
+  --ink: #1A1714;
+  --ink-2: #4A4540;
+  --ink-3: #7A746C;
+
+  /* lines */
+  --line: #E8E2D8;
+  --line-2: #D4CCBE;
+
+  /* brand */
+  --ember: #E5552B;
+  --ember-tint: #FCEBE3;
+  --flint: #B8431C;
+  --flint-hover: #9C3815;
+  --flint-press: #7F2D10;
+
+  /* states */
+  --bordeaux: #7A1F1A;
+  --bordeaux-tint: #F5E0DD;
+  --moss: #4A6B3F;
+  --moss-tint: #E5EDDF;
+  --ochre: #B8841C;
+  --ochre-tint: #F5EBD4;
+
+  /* focus */
+  --focus: #2D6FB8;
+
+  /* radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* shadows — minimal, lean on borders */
+  --shadow-xs: 0 1px 2px rgba(26, 23, 20, 0.04);
+  --shadow-sm: 0 4px 12px rgba(26, 23, 20, 0.06);
+  --shadow-md: 0 12px 32px rgba(26, 23, 20, 0.10);
+}
+
+[data-theme="dark"] {
+  --paper: #1C1A17;
+  --paper-2: #25221E;
+
+  --ink: #F2EEE7;
+  --ink-2: #BDB6AC;
+  --ink-3: #847D72;
+
+  --line: #38332D;
+  --line-2: #4A4339;
+
+  --ember: #F27447;
+  --ember-tint: #3A1F15;
+  --flint: #E36544;
+  --flint-hover: #EE7656;
+  --flint-press: #C9543A;
+
+  --bordeaux: #D4604E;
+  --bordeaux-tint: #3B1F1B;
+  --moss: #7A9B6A;
+  --moss-tint: #1F2A1A;
+  --ochre: #D4A04A;
+  --ochre-tint: #2E2618;
+
+  --focus: #5A95DC;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* 180ms color/bg transitions on theme switch — never transforms. */
+html.theme-ready,
+html.theme-ready * {
+  transition:
+    background-color 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-ready,
+  html.theme-ready * {
+    transition-duration: 100ms !important;
+    animation-duration: 100ms !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transform: none !important;
+  }
+}
