@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Undo2, X } from "lucide-react";
+import { Check, CornerDownRight, Undo2, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { TodayItem } from "@/lib/today/types";
@@ -43,6 +43,7 @@ export function RosterRow({
   const name = recipient.name ?? recipient.email;
   const skipped = status === "skipped";
   const sent = status === "sent";
+  const isFollowup = item.kind === "followup";
 
   return (
     <div
@@ -83,6 +84,13 @@ export function RosterRow({
             {recipient.role ? `${recipient.role} · ` : ""}
             {recipient.company}
           </span>
+          {isFollowup ? (
+            <span className="mt-0.5 inline-flex items-center gap-1 rounded-pill border border-line-2 bg-paper-2 px-1.5 py-px text-[11px] text-ink-3">
+              <CornerDownRight className="h-3 w-3" aria-hidden />
+              Follow-up
+              {item.followup_index ? ` · #${item.followup_index}` : ""}
+            </span>
+          ) : null}
         </div>
       </button>
 
