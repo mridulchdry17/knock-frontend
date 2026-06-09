@@ -67,16 +67,29 @@ export function WaitlistView() {
     );
   };
 
-  const toggleApproval = async (row: AdminWaitlistOut) => {
+  const allowAs = async (row: AdminWaitlistOut, tier: "free" | "paid") => {
     setBusyId(row.id);
     try {
-      const updated = row.approved_at
-        ? await revokeWaitlist(row.id)
-        : await approveWaitlist(row.id);
+      const updated = await approveWaitlist(row.id, tier);
       applyApproval(updated);
       toast.success(
-        updated.approved_at ? `Allowed ${row.email} in` : `Revoked access for ${row.email}`,
+        tier === "paid"
+          ? `Allowed ${row.email} in as paid`
+          : `Allowed ${row.email} in`,
       );
+    } catch {
+      toast.error("We hit a snag updating access. Try again.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const revoke = async (row: AdminWaitlistOut) => {
+    setBusyId(row.id);
+    try {
+      const updated = await revokeWaitlist(row.id);
+      applyApproval(updated);
+      toast.success(`Revoked access for ${row.email}`);
     } catch {
       toast.error("We hit a snag updating access. Try again.");
     } finally {
@@ -143,21 +156,18 @@ export function WaitlistView() {
                       {relativeTime(row.created_at)}
                     </td>
                     <td className="px-4 py-3">
-                      <ApprovalBadge approvedAt={row.approved_at} />
+                      <ApprovalBadge
+                        approvedAt={row.approved_at}
+                        tier={row.intended_tier}
+                      />
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant={row.approved_at ? "ghost" : "primary"}
-                        onClick={() => toggleApproval(row)}
-                        disabled={busyId === row.id}
-                      >
-                        {busyId === row.id
-                          ? "Saving…"
-                          : row.approved_at
-                            ? "Revoke"
-                            : "Allow in"}
-                      </Button>
+                      <RowActions
+                        row={row}
+                        busy={busyId === row.id}
+                        onAllow={(tier) => allowAs(row, tier)}
+                        onRevoke={() => revoke(row)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -176,17 +186,18 @@ export function WaitlistView() {
                       Joined {relativeTime(row.created_at)}
                     </div>
                     <div className="mt-2">
-                      <ApprovalBadge approvedAt={row.approved_at} />
+                      <ApprovalBadge
+                        approvedAt={row.approved_at}
+                        tier={row.intended_tier}
+                      />
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={row.approved_at ? "ghost" : "primary"}
-                    onClick={() => toggleApproval(row)}
-                    disabled={busyId === row.id}
-                  >
-                    {busyId === row.id ? "Saving…" : row.approved_at ? "Revoke" : "Allow in"}
-                  </Button>
+                  <RowActions
+                    row={row}
+                    busy={busyId === row.id}
+                    onAllow={(tier) => allowAs(row, tier)}
+                    onRevoke={() => revoke(row)}
+                  />
                 </div>
               </li>
             ))}
@@ -223,11 +234,17 @@ export function WaitlistView() {
   );
 }
 
-function ApprovalBadge({ approvedAt }: { approvedAt?: string | null }) {
+function ApprovalBadge({
+  approvedAt,
+  tier,
+}: {
+  approvedAt?: string | null;
+  tier?: "free" | "paid";
+}) {
   if (approvedAt) {
     return (
       <span className="inline-flex items-center rounded-pill bg-moss-tint px-2 py-0.5 text-caption font-medium text-moss">
-        Allowed
+        Allowed{tier === "paid" ? " · Paid" : " · Free"}
       </span>
     );
   }
@@ -235,5 +252,43 @@ function ApprovalBadge({ approvedAt }: { approvedAt?: string | null }) {
     <span className="inline-flex items-center rounded-pill border border-line-2 px-2 py-0.5 text-caption text-ink-3">
       Waiting
     </span>
+  );
+}
+
+/** Per-row action cluster: two Allow buttons when waiting, Revoke when allowed. */
+function RowActions({
+  row,
+  busy,
+  onAllow,
+  onRevoke,
+}: {
+  row: AdminWaitlistOut;
+  busy: boolean;
+  onAllow: (tier: "free" | "paid") => void;
+  onRevoke: () => void;
+}) {
+  if (busy) {
+    return (
+      <Button size="sm" variant="ghost" disabled>
+        Saving…
+      </Button>
+    );
+  }
+  if (row.approved_at) {
+    return (
+      <Button size="sm" variant="ghost" onClick={onRevoke}>
+        Revoke
+      </Button>
+    );
+  }
+  return (
+    <div className="inline-flex items-center gap-2">
+      <Button size="sm" variant="primary" onClick={() => onAllow("free")}>
+        Allow as free
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => onAllow("paid")}>
+        as paid
+      </Button>
+    </div>
   );
 }

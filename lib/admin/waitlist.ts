@@ -24,12 +24,16 @@ export async function listWaitlist(params: ListWaitlistParams = {}): Promise<Pag
   return PageOfWaitlistSchema.parse(data);
 }
 
-/** Allow a waitlist entry in (stamps approved_at; promotes a linked pending
- *  account to free immediately). Returns the updated entry. */
-export async function approveWaitlist(id: string): Promise<AdminWaitlistOut> {
+/** Allow a waitlist entry in. `tier='paid'` pre-marks the entry so the user
+ *  lands at 'paid' on sign-in (or gets bumped to paid now if already linked);
+ *  default `tier='free'` is the regular Allow flow. Returns the updated entry. */
+export async function approveWaitlist(
+  id: string,
+  tier: "free" | "paid" = "free",
+): Promise<AdminWaitlistOut> {
   const data = await apiFetch<unknown>(
     `/api/v1/admin/waitlist/${encodeURIComponent(id)}/approve`,
-    { method: "POST", body: {} },
+    { method: "POST", body: { tier } },
   );
   return AdminWaitlistOutSchema.parse(data);
 }
