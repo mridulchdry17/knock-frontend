@@ -46,9 +46,9 @@ describe("<AvatarStrip />", () => {
   });
 
   it("renders cap-many skeleton dots when loading", () => {
-    const { container } = render(<AvatarStrip items={[]} cap={20} loading />);
+    const { container } = render(<AvatarStrip items={[]} cap={15} loading />);
     const dots = container.querySelectorAll("div.h-8.w-8");
-    expect(dots.length).toBe(20);
+    expect(dots.length).toBe(15);
   });
 });
 

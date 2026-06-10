@@ -7,6 +7,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { GmailDisconnectedBanner } from "@/components/gmail/gmail-disconnected-banner";
 import { TodayHeader } from "@/components/knock/today-header";
 import { TodayAutopilotHeader } from "@/components/knock/today-autopilot-header";
+import { BatchTemplatePicker } from "@/components/knock/batch-template-picker";
 import { RecipientCard } from "@/components/knock/recipient-card";
 import { RosterRow } from "@/components/knock/roster-row";
 import { TodayEmptyState } from "@/components/knock/today-empty-state";
@@ -116,7 +117,7 @@ export default function TodayPage() {
     <AppShell title="Today" banner={banner}>
       {isAutopilot || isAutopilotPaused ? (
         <TodayAutopilotHeader
-          cap={cap ?? 20}
+          cap={cap ?? 15}
           sentToday={sent ?? 0}
           paused={isAutopilotPaused}
           onPause={onAutopilotPause}
@@ -165,6 +166,7 @@ export default function TodayPage() {
         markDefault={today.markDefault}
         editCard={today.editCard}
         skipBatch={today.skipBatch}
+        applyTemplate={today.applyTemplate}
         onShowCheatsheet={openShortcuts}
         onSendBatch={() => beginSendWithToast(today)}
       />
@@ -230,6 +232,11 @@ interface PageBodyProps {
   markDefault: (id: string) => Promise<void>;
   editCard: (id: string, patch: TodayItemPatch) => Promise<TodayItem>;
   skipBatch: () => Promise<void>;
+  applyTemplate: (templateId: string) => Promise<{
+    rewritten: number;
+    kept_edited: number;
+    skipped_terminal: number;
+  }>;
   onShowCheatsheet: () => void;
   onSendBatch: () => void;
 }
@@ -246,6 +253,7 @@ function PageBody({
   markDefault,
   editCard,
   skipBatch,
+  applyTemplate,
   onShowCheatsheet,
   onSendBatch,
 }: PageBodyProps) {
@@ -294,7 +302,7 @@ function PageBody({
   if (status === "limit-reached") {
     return (
       <TodayEmptyState
-        variant={data.cap >= 20 ? "limit-reached-paid" : "limit-reached-free"}
+        variant={data.cap > 7 ? "limit-reached-paid" : "limit-reached-free"}
       />
     );
   }
@@ -312,6 +320,7 @@ function PageBody({
       markSkipped={markSkipped}
       markDefault={markDefault}
       editCard={editCard}
+      applyTemplate={applyTemplate}
       onShowCheatsheet={onShowCheatsheet}
       onSendBatch={onSendBatch}
     />
@@ -326,6 +335,11 @@ interface PopulatedViewProps {
   markSkipped: (id: string) => Promise<void>;
   markDefault: (id: string) => Promise<void>;
   editCard: (id: string, patch: TodayItemPatch) => Promise<TodayItem>;
+  applyTemplate: (templateId: string) => Promise<{
+    rewritten: number;
+    kept_edited: number;
+    skipped_terminal: number;
+  }>;
   onShowCheatsheet: () => void;
   onSendBatch: () => void;
 }
@@ -338,6 +352,7 @@ function PopulatedView({
   markSkipped,
   markDefault,
   editCard,
+  applyTemplate,
   onShowCheatsheet,
   onSendBatch,
 }: PopulatedViewProps) {
@@ -407,47 +422,72 @@ function PopulatedView({
   const selectedItem =
     data.items.find((i) => i.id === activeId) ?? data.items[0] ?? null;
 
-  return (
-    <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-gutter py-6 lg:flex-row lg:items-start lg:gap-6 lg:px-8">
-      {/* Roster — the "who". Tight, scannable; the message is the same template
-          for everyone, so the recipient is what the user evaluates. */}
-      <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-[340px] lg:shrink-0 lg:overflow-y-auto">
-        {!autopilot ? <FirstBatchBanner /> : null}
-        <div className="overflow-hidden rounded-md border border-line bg-paper">
-          {data.items.map((item) => (
-            <RosterRow
-              key={item.id}
-              item={item}
-              selected={item.id === activeId}
-              onSelect={onJump}
-              onSkip={!autopilot ? onMarkSkipped : autopilotActive ? onAutopilotSkip : undefined}
-              onUnskip={!autopilot ? onMarkDefault : undefined}
-              rowRef={(el) => {
-                if (el) cardRefs.current.set(item.id, el);
-                else cardRefs.current.delete(item.id);
-              }}
-            />
-          ))}
-        </div>
-      </aside>
+  const handleApplyTemplate = React.useCallback(
+    async (templateId: string) => {
+      const res = await applyTemplate(templateId);
+      // Locked voice: tell the user exactly what changed.
+      if (res.rewritten === 0 && res.kept_edited === 0) {
+        toast("Nothing to rewrite — all cards are already sent or skipped.");
+      } else if (res.kept_edited > 0) {
+        toast(
+          `Rewrote ${res.rewritten} ${res.rewritten === 1 ? "card" : "cards"} · ` +
+            `${res.kept_edited} kept your edits.`,
+        );
+      } else {
+        toast(`Rewrote ${res.rewritten} ${res.rewritten === 1 ? "card" : "cards"}.`);
+      }
+    },
+    [applyTemplate],
+  );
 
-      {/* Reading pane — the selected person's actual email + actions. */}
-      <div className="min-w-0 flex-1">
-        {selectedItem ? (
-          <RecipientCard
-            key={selectedItem.id}
-            item={selectedItem}
-            defaultExpanded
-            editorOpen={editorOpenId === selectedItem.id}
-            onEditorOpenChange={(open) => setEditorOpenId(open ? selectedItem.id : null)}
-            autopilot={autopilot}
-            onMarkReady={!autopilot ? onMarkReady : undefined}
-            onMarkSkipped={!autopilot ? onMarkSkipped : undefined}
-            onMarkDefault={!autopilot ? onMarkDefault : undefined}
-            onEditCard={!autopilot ? editCard : undefined}
-            onAutopilotSkip={autopilotActive ? onAutopilotSkip : undefined}
-          />
-        ) : null}
+  return (
+    <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-gutter py-6 lg:px-8">
+      {/* Batch-level template picker. Hidden in autopilot mode (autopilot uses
+          your templates as-is) and when the user has 0 saved templates (the
+          picker self-hides). */}
+      {!autopilot ? <BatchTemplatePicker onApply={handleApplyTemplate} /> : null}
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+        {/* Roster — the "who". Tight, scannable; the message is the same template
+            for everyone, so the recipient is what the user evaluates. */}
+        <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-[340px] lg:shrink-0 lg:overflow-y-auto">
+          {!autopilot ? <FirstBatchBanner /> : null}
+          <div className="overflow-hidden rounded-md border border-line bg-paper">
+            {data.items.map((item) => (
+              <RosterRow
+                key={item.id}
+                item={item}
+                selected={item.id === activeId}
+                onSelect={onJump}
+                onSkip={!autopilot ? onMarkSkipped : autopilotActive ? onAutopilotSkip : undefined}
+                onUnskip={!autopilot ? onMarkDefault : undefined}
+                rowRef={(el) => {
+                  if (el) cardRefs.current.set(item.id, el);
+                  else cardRefs.current.delete(item.id);
+                }}
+              />
+            ))}
+          </div>
+        </aside>
+
+        {/* Reading pane — the selected person's actual email + actions. */}
+        <div className="min-w-0 flex-1">
+          {selectedItem ? (
+            <RecipientCard
+              key={selectedItem.id}
+              item={selectedItem}
+              defaultExpanded
+              editorOpen={editorOpenId === selectedItem.id}
+              onEditorOpenChange={(open) => setEditorOpenId(open ? selectedItem.id : null)}
+              autopilot={autopilot}
+              onMarkReady={!autopilot ? onMarkReady : undefined}
+              onMarkSkipped={!autopilot ? onMarkSkipped : undefined}
+              onMarkDefault={!autopilot ? onMarkDefault : undefined}
+              onEditCard={!autopilot ? editCard : undefined}
+              onAutopilotSkip={autopilotActive ? onAutopilotSkip : undefined}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );

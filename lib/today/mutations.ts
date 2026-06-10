@@ -14,6 +14,8 @@ import {
   type BatchDispatchResult,
   SkipTodayResultSchema,
   type SkipTodayResult,
+  ApplyTemplateResultSchema,
+  type ApplyTemplateResult,
 } from "@/lib/today/types";
 
 /**
@@ -62,6 +64,26 @@ export async function sendBatch(): Promise<BatchDispatchResult> {
   } catch (err) {
     if (err instanceof ApiError) throw err;
     throw new ApiError(0, "unknown", "We hit a snag sending. Try again in a moment.");
+  }
+}
+
+/**
+ * Re-renders every pristine card in today's batch with `templateId`. Cards the
+ * user has manually edited (subject/body changed via PATCH) are preserved.
+ * Returns counts so the caller can show "Rewrote N · M kept your edits".
+ */
+export async function applyTemplateToBatch(
+  templateId: string,
+): Promise<ApplyTemplateResult> {
+  try {
+    const raw = await apiFetch<unknown>("/api/v1/today/apply-template", {
+      method: "POST",
+      body: { template_id: Number(templateId) },
+    });
+    return ApplyTemplateResultSchema.parse(raw);
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError(0, "unknown", "We hit a snag applying that template.");
   }
 }
 

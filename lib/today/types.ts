@@ -19,6 +19,13 @@ export const TodayCardStatusSchema = z.enum([
 ]);
 export type TodayCardStatus = z.infer<typeof TodayCardStatusSchema>;
 
+export const ParentSendSummarySchema = z.object({
+  original_subject: z.string(),
+  original_body: z.string(),
+  original_sent_at: z.string(),
+});
+export type ParentSendSummary = z.infer<typeof ParentSendSummarySchema>;
+
 export const RecipientSchema = z.object({
   name: z.string().nullable(),
   email: z.string().email(),
@@ -44,6 +51,13 @@ export const TodayItemSchema = z.object({
   status: TodayCardStatusSchema,
   cooldown_until: z.string().nullable(),
   sent_at: z.string().nullable(),
+  // Follow-up engine (backend 0018). Optional in the inferred type — older
+  // backends (or test fixtures) can omit it; consumers treat absence as
+  // "initial". Code paths check `item.kind === "followup"` which is false for
+  // undefined too.
+  kind: z.enum(["initial", "followup"]).optional(),
+  followup_index: z.number().int().nullable().optional(),
+  parent: ParentSendSummarySchema.nullable().optional(),
 });
 export type TodayItem = z.infer<typeof TodayItemSchema>;
 
@@ -81,6 +95,14 @@ export const SkipTodayResultSchema = z.object({
   skipped: z.literal(true),
 });
 export type SkipTodayResult = z.infer<typeof SkipTodayResultSchema>;
+
+/** POST /api/v1/today/apply-template response. */
+export const ApplyTemplateResultSchema = z.object({
+  rewritten: z.number().int().nonnegative(),
+  kept_edited: z.number().int().nonnegative(),
+  skipped_terminal: z.number().int().nonnegative(),
+});
+export type ApplyTemplateResult = z.infer<typeof ApplyTemplateResultSchema>;
 
 /** POST /api/v1/autopilot/pause response. */
 export const AutopilotPauseResultSchema = z.object({

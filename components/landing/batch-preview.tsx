@@ -48,13 +48,13 @@ export function BatchPreview({ className }: { className?: string }) {
       <div className="flex items-baseline justify-between border-b border-line pb-3">
         <span className="font-mono text-caption uppercase text-ink-3">Today</span>
         <span className="text-small text-ink-2">
-          <span className="text-ember">3</span> of 20 reviewed
+          <span className="text-ember">3</span> of 15 reviewed
         </span>
       </div>
 
       {/* avatar strip — status dots */}
       <div className="flex flex-wrap items-center gap-1 py-3">
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: 15 }).map((_, i) => (
           <span
             key={i}
             className={cn(
