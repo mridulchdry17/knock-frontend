@@ -129,7 +129,7 @@ describe("<TodayHeader /> send button", () => {
   it("renders 'Mark all ready' ghost when defaultCount >=10", () => {
     render(
       <TodayHeader
-        cap={20}
+        cap={15}
         sentToday={0}
         readyCount={0}
         defaultCount={11}
@@ -143,7 +143,7 @@ describe("<TodayHeader /> send button", () => {
   it("hides 'Mark all ready' when defaultCount <10", () => {
     render(
       <TodayHeader
-        cap={20}
+        cap={15}
         sentToday={0}
         readyCount={0}
         defaultCount={5}
@@ -158,24 +158,24 @@ describe("<TodayHeader /> send button", () => {
 describe("<TodayAutopilotHeader />", () => {
   it("active variant: title + subtitle + Pause autopilot", () => {
     render(
-      <TodayAutopilotHeader cap={20} sentToday={12} paused={false} onPause={vi.fn()} />,
+      <TodayAutopilotHeader cap={15} sentToday={12} paused={false} onPause={vi.fn()} />,
     );
-    expect(screen.getByText(/Autopilot · 12 of 20 sent today/)).toBeInTheDocument();
-    expect(screen.getByText(/Knock will send 8 more through the afternoon/)).toBeInTheDocument();
+    expect(screen.getByText(/Autopilot · 12 of 15 sent today/)).toBeInTheDocument();
+    expect(screen.getByText(/Knock will send 3 more through the afternoon/)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Pause autopilot" }).length).toBeGreaterThan(0);
   });
 
   it("paused variant: shows resume + switch-to-manual", () => {
     render(
       <TodayAutopilotHeader
-        cap={20}
+        cap={15}
         sentToday={12}
         paused
         onResume={vi.fn()}
         onSwitchToManual={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Autopilot paused · 12 of 20 sent/)).toBeInTheDocument();
+    expect(screen.getByText(/Autopilot paused · 12 of 15 sent/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Resume autopilot" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to manual review" })).toBeInTheDocument();
   });

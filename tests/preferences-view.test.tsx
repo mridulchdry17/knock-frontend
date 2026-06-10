@@ -201,7 +201,7 @@ describe("PreferencesView — autopilot", () => {
     expect(await screen.findByText("Turn on autopilot?")).toBeInTheDocument();
     expect(
       screen.getByText(
-        /We'll send up to 20 emails per day in your name, using your saved templates\. You can pause anytime from \/today\./,
+        /We'll send up to 15 emails per day in your name, using your saved templates\. You can pause anytime from \/today\./,
       ),
     ).toBeInTheDocument();
   });

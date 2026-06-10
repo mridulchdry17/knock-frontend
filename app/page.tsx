@@ -112,7 +112,7 @@ export default function Page() {
           <div className="lg:col-span-5">
             <BatchPreview className="animate-fade-in" />
             <div className="mt-4 space-y-1.5">
-              <Annotation>up to 20 a day, picked for you each morning</Annotation>
+              <Annotation>up to 15 a day, picked for you each morning</Annotation>
               <Annotation>you press send — never us</Annotation>
             </div>
           </div>

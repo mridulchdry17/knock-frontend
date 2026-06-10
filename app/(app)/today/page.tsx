@@ -116,7 +116,7 @@ export default function TodayPage() {
     <AppShell title="Today" banner={banner}>
       {isAutopilot || isAutopilotPaused ? (
         <TodayAutopilotHeader
-          cap={cap ?? 20}
+          cap={cap ?? 15}
           sentToday={sent ?? 0}
           paused={isAutopilotPaused}
           onPause={onAutopilotPause}
@@ -294,7 +294,7 @@ function PageBody({
   if (status === "limit-reached") {
     return (
       <TodayEmptyState
-        variant={data.cap >= 20 ? "limit-reached-paid" : "limit-reached-free"}
+        variant={data.cap > 7 ? "limit-reached-paid" : "limit-reached-free"}
       />
     );
   }

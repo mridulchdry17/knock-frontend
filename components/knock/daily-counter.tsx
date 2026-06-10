@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 interface DailyCounterProps {
   /** Cards already sent today. */
   sent: number;
-  /** Daily cap (7 free / 20 paid). */
+  /** Daily cap (7 free / 15 paid). */
   cap: number;
   className?: string;
   /** When true, render an indeterminate skeleton bar (used while loading). */

@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 
 interface TodayHeaderProps {
-  /** Daily cap (7 free / 20 paid). null while loading — count renders as "—". */
+  /** Daily cap (7 free / 15 paid). null while loading — count renders as "—". */
   cap: number | null;
   sentToday: number | null;
   loading?: boolean;
