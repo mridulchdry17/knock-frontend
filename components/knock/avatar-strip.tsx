@@ -10,7 +10,7 @@ interface AvatarStripProps {
   items: TodayItem[];
   /** ID of the active card (highlighted with a 2px Flint ring). */
   activeId?: string | null;
-  /** Total expected slots (cap). Used so the strip pre-allocates 7/20 dots even on partial batches. */
+  /** Total expected slots (cap). Used so the strip pre-allocates 7/15 dots even on partial batches. */
   cap: number;
   /** Smooth-scroll-to-card on click. Page wires this with refs. */
   onJump?: (cardId: string) => void;
@@ -32,7 +32,7 @@ function initialsFrom(name: string | null, email: string): string {
  * Sticky avatar mini-strip below the header. 32px circles with a 2px status
  * dot bottom-right. Click an avatar → smooth-scrolls to its RecipientCard.
  *
- * On 20-avatar paid view, becomes horizontally scrollable with a fade-edge
+ * On 15-avatar paid view, becomes horizontally scrollable with a fade-edge
  * gradient on the right; on mobile, always horizontal-scroll.
  */
 export function AvatarStrip({
@@ -64,7 +64,8 @@ export function AvatarStrip({
 
   if (items.length === 0) return null;
 
-  const isPaid = cap >= 20;
+  // Paid cap is now 15; anything above free (7) reads as paid view.
+  const isPaid = cap > 7;
 
   return (
     <div

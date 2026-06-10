@@ -117,7 +117,7 @@ export function AutopilotSection({ prefs, mutations }: AutopilotSectionProps) {
           <DialogHeader>
             <DialogTitle>Turn on autopilot?</DialogTitle>
             <DialogDescription id="autopilot-confirm-desc">
-              We&apos;ll send up to 20 emails per day in your name, using your saved
+              We&apos;ll send up to 15 emails per day in your name, using your saved
               templates. You can pause anytime from /today.
             </DialogDescription>
           </DialogHeader>
