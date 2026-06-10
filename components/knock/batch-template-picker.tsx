@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ApiError } from "@/lib/api/errors";
 import { fetchTemplates } from "@/lib/templates/client";
 import type { Template } from "@/lib/templates/types";
 import { cn } from "@/lib/utils";
@@ -56,8 +57,15 @@ export function BatchTemplatePicker({
     setSnag(null);
     try {
       await onApply(templateId);
-    } catch {
-      setSnag("Couldn't apply that template. Try again.");
+    } catch (err) {
+      // Surface the actual API message when we have one — generic snags hide
+      // real causes (e.g. missing proxy route, expired session, template
+      // deleted). Falls back to a friendly default for non-ApiError throws.
+      if (err instanceof ApiError && err.message) {
+        setSnag(err.message);
+      } else {
+        setSnag("Couldn't apply that template. Try again.");
+      }
     } finally {
       setApplying(false);
       // Reset the select back to its placeholder — this is a verb, not a state.
