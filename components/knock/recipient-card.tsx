@@ -238,6 +238,9 @@ export function RecipientCard({
           onSave={async (patch) => {
             await onEditCard(item.id, patch);
           }}
+          onSelectTemplate={async (templateId) => {
+            await onEditCard(item.id, { template_id: templateId });
+          }}
           onCancel={() => setEditing(false)}
         />
       ) : (
