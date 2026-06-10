@@ -96,6 +96,14 @@ export const SkipTodayResultSchema = z.object({
 });
 export type SkipTodayResult = z.infer<typeof SkipTodayResultSchema>;
 
+/** POST /api/v1/today/apply-template response. */
+export const ApplyTemplateResultSchema = z.object({
+  rewritten: z.number().int().nonnegative(),
+  kept_edited: z.number().int().nonnegative(),
+  skipped_terminal: z.number().int().nonnegative(),
+});
+export type ApplyTemplateResult = z.infer<typeof ApplyTemplateResultSchema>;
+
 /** POST /api/v1/autopilot/pause response. */
 export const AutopilotPauseResultSchema = z.object({
   paused: z.literal(true),

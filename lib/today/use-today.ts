@@ -6,12 +6,14 @@ import {
   updateCard as apiUpdateCard,
   sendBatch as apiSendBatch,
   skipToday as apiSkipToday,
+  applyTemplateToBatch as apiApplyTemplate,
 } from "@/lib/today/mutations";
 import type {
   TodayBatch,
   TodayItem,
   TodayItemPatch,
   BatchDispatchResult,
+  ApplyTemplateResult,
 } from "@/lib/today/types";
 import { ApiError } from "@/lib/api/errors";
 
@@ -64,6 +66,12 @@ export interface UseTodayResult {
   sendResult: BatchDispatchResult | null;
   /** Skip the entire batch for today. */
   skipBatch: () => Promise<void>;
+  /**
+   * Apply a template to every pristine (un-edited, non-terminal) card in
+   * today's batch. Returns counts so the caller can show a result toast.
+   * Refetches on success so the new subject/body land in the UI.
+   */
+  applyTemplate: (templateId: string) => Promise<ApplyTemplateResult>;
 }
 
 /** Returned from beginSend; lets the caller cancel the 3s hold. */
@@ -347,6 +355,16 @@ export function useToday(): UseTodayResult {
     }
   }, []);
 
+  const applyTemplate = useCallback(
+    async (templateId: string): Promise<ApplyTemplateResult> => {
+      const res = await apiApplyTemplate(templateId);
+      // Refetch — every pristine card's subject/body changed server-side.
+      setReloadKey((k) => k + 1);
+      return res;
+    },
+    [],
+  );
+
   const readyCount = data
     ? data.items.filter((i) => i.status === "ready").length
     : 0;
@@ -366,5 +384,6 @@ export function useToday(): UseTodayResult {
     sendPhase,
     sendResult,
     skipBatch,
+    applyTemplate,
   };
 }
