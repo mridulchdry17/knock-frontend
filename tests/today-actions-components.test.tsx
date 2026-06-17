@@ -113,7 +113,7 @@ describe("<TodayHeader /> send button", () => {
         onSend={vi.fn()}
       />,
     );
-    const btn = screen.getByRole("button", { name: /Send today's batch/ });
+    const btn = screen.getByRole("button", { name: /Approve today's batch/ });
     expect(btn).toBeDisabled();
   });
 
@@ -122,7 +122,7 @@ describe("<TodayHeader /> send button", () => {
     render(
       <TodayHeader cap={7} sentToday={0} readyCount={2} defaultCount={5} onSend={onSend} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Send today's batch/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Approve today's batch/ }));
     expect(onSend).toHaveBeenCalled();
   });
 
@@ -244,7 +244,7 @@ describe("<KeyboardShortcutsDialog />", () => {
     expect(screen.getByText("Global")).toBeInTheDocument();
     // Sample bindings
     expect(screen.getByText("Open inline editor")).toBeInTheDocument();
-    expect(screen.getByText("Send today's batch")).toBeInTheDocument();
+    expect(screen.getByText("Approve today's batch")).toBeInTheDocument();
     expect(screen.getByText("Open selected thread")).toBeInTheDocument();
   });
 
