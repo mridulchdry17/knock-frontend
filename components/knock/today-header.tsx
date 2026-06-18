@@ -93,20 +93,22 @@ export function TodayHeader({
           <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span tabIndex={sendDisabled ? 0 : -1} aria-label="Send today's batch">
+                <span tabIndex={sendDisabled ? 0 : -1} aria-label="Approve today's batch">
                   <Button
                     size="sm"
                     onClick={onSend}
                     disabled={sendDisabled || !onSend}
                     className="w-full lg:w-[320px]"
                   >
-                    Send today&apos;s batch
+                    Approve today&apos;s batch
                   </Button>
                 </span>
               </TooltipTrigger>
               {sendDisabled ? (
-                <TooltipContent>Mark cards ready to send today&apos;s batch.</TooltipContent>
-              ) : null}
+                <TooltipContent>Mark cards ready to approve today&apos;s batch.</TooltipContent>
+              ) : (
+                <TooltipContent>We&apos;ll send them through the day, ~1/hour.</TooltipContent>
+              )}
             </Tooltip>
           </TooltipProvider>
         </div>

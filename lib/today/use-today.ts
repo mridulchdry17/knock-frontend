@@ -41,7 +41,9 @@ export type TodayStatus =
  *  - idle         no send in flight
  *  - holding      3-second client-side hold before firing API; user can undo
  *  - dispatching  hold ended, awaiting API response
- *  - dispatched   API returned ok; cards transitioned to sent
+ *  - dispatched   API returned ok; cards are queued in the staggered schedule.
+ *                 (No optimistic ready→sent flip — actual sending is server-
+ *                 side and happens as each send_time arrives.)
  */
 export type SendPhase = "idle" | "holding" | "dispatching" | "dispatched";
 
@@ -281,26 +283,12 @@ export function useToday(): UseTodayResult {
       apiSendBatch()
         .then((res) => {
           setSendResult(res);
-          // Optimistically transition all ready cards to sent.
-          const cur = dataRef.current;
-          if (cur) {
-            const sentIds = new Set(
-              cur.items.filter((i) => i.status === "ready").map((i) => i.id),
-            );
-            const now = new Date(res.scheduled_first_at);
-            const nextItems = cur.items.map((item) => {
-              if (!sentIds.has(item.id)) return item;
-              return { ...item, status: "sent" as const, sent_at: now.toISOString() };
-            });
-            const nextBatch = {
-              ...cur,
-              items: nextItems,
-              sent_today: cur.sent_today + res.dispatched_count,
-            };
-            dataRef.current = nextBatch;
-            setData(nextBatch);
-            setStatus(deriveStatus(nextBatch));
-          }
+          // Backend response semantics: `dispatched_count` is the number of
+          // cards we APPROVED (queued at the back of the staggered schedule),
+          // NOT the number actually delivered. Sends happen as each card's
+          // send_time arrives. So we don't optimistically flip ready→sent and
+          // we don't bump sent_today — the next /today GET (after a real send
+          // fires) will reflect the truth.
           setSendPhase("dispatched");
           resolveDone(res);
         })

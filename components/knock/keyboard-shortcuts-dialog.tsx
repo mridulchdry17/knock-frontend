@@ -32,7 +32,7 @@ const GROUPS: ShortcutGroup[] = [
       { keys: "R", description: "Toggle ready on focused card" },
       { keys: "S", description: "Toggle skipped on focused card" },
       { keys: "E", description: "Open inline editor" },
-      { keys: "⌘ Enter", description: "Send today's batch" },
+      { keys: "⌘ Enter", description: "Approve today's batch" },
     ],
   },
   {

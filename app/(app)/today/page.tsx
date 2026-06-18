@@ -185,11 +185,11 @@ function beginSendWithToast(today: ReturnType<typeof useToday>) {
   toast.custom(
     (id) => (
       <UndoToast
-        message={`${readyCount} email${readyCount === 1 ? "" : "s"} sending.`}
+        message={`${readyCount} email${readyCount === 1 ? "" : "s"} queued — sending through the day.`}
         durationMs={3000}
         onUndo={() => {
           handle.cancel();
-          toast.custom(() => <SimpleToast message="Held. Send when you're ready." />, {
+          toast.custom(() => <SimpleToast message="Held. Approve when you're ready." />, {
             duration: 1500,
           });
           toast.dismiss(id);
