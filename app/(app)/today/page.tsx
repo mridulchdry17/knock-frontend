@@ -449,26 +449,40 @@ function PopulatedView({
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         {/* Roster — the "who". Tight, scannable; the message is the same template
-            for everyone, so the recipient is what the user evaluates. */}
-        <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-[340px] lg:shrink-0 lg:overflow-y-auto">
-          {!autopilot ? <FirstBatchBanner /> : null}
-          <div className="overflow-hidden rounded-md border border-line bg-paper">
-            {data.items.map((item) => (
-              <RosterRow
-                key={item.id}
-                item={item}
-                selected={item.id === activeId}
-                onSelect={onJump}
-                onSkip={!autopilot ? onMarkSkipped : autopilotActive ? onAutopilotSkip : undefined}
-                onUnskip={!autopilot ? onMarkDefault : undefined}
-                rowRef={(el) => {
-                  if (el) cardRefs.current.set(item.id, el);
-                  else cardRefs.current.delete(item.id);
-                }}
-              />
-            ))}
-          </div>
-        </aside>
+            for everyone, so the recipient is what the user evaluates.
+
+            The aside has its own scroll on lg+ so the reading pane stays put.
+            With ~15 cards a desktop viewport only fits ~11; the bottom-fade
+            overlay below signals "more below — scroll the list itself" so the
+            user doesn't think the batch is shorter than the header claims. */}
+        <div className="relative lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-[340px] lg:shrink-0">
+          <aside className="lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+            {!autopilot ? <FirstBatchBanner /> : null}
+            <div className="overflow-hidden rounded-md border border-line bg-paper">
+              {data.items.map((item) => (
+                <RosterRow
+                  key={item.id}
+                  item={item}
+                  selected={item.id === activeId}
+                  onSelect={onJump}
+                  onSkip={!autopilot ? onMarkSkipped : autopilotActive ? onAutopilotSkip : undefined}
+                  onUnskip={!autopilot ? onMarkDefault : undefined}
+                  rowRef={(el) => {
+                    if (el) cardRefs.current.set(item.id, el);
+                    else cardRefs.current.delete(item.id);
+                  }}
+                />
+              ))}
+            </div>
+          </aside>
+          {/* Bottom-fade affordance — only on lg+ where the aside has its own
+              scroll. Pointer-events-none so it doesn't block clicks on the
+              card peeking through. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-10 bg-gradient-to-t from-paper to-transparent lg:block"
+          />
+        </div>
 
         {/* Reading pane — the selected person's actual email + actions. */}
         <div className="min-w-0 flex-1">
