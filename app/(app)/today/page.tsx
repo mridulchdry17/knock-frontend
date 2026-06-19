@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
 import { showSnagToast } from "@/lib/ui/snag-toast";
 import { useToday, type TodayStatus } from "@/lib/today/use-today";
+import { useScrollFade, bottomFadeStyle } from "@/lib/ui/use-scroll-fade";
 import { useTodayShortcuts } from "@/lib/today/use-today-shortcuts";
 import { pauseAutopilot, resumeAutopilot } from "@/lib/autopilot/client";
 import { ApiError } from "@/lib/api/errors";
@@ -422,6 +423,12 @@ function PopulatedView({
   const selectedItem =
     data.items.find((i) => i.id === activeId) ?? data.items[0] ?? null;
 
+  // Bottom-fade affordance on the roster column. Re-measures when the list
+  // length changes (e.g. after applying a template that resurrects skipped
+  // cards) so the fade goes away if the list now fits the viewport.
+  const { ref: rosterRef, showBottomFade: showRosterFade } =
+    useScrollFade<HTMLElement>([data.items.length]);
+
   const handleApplyTemplate = React.useCallback(
     async (templateId: string) => {
       const res = await applyTemplate(templateId);
@@ -452,37 +459,33 @@ function PopulatedView({
             for everyone, so the recipient is what the user evaluates.
 
             The aside has its own scroll on lg+ so the reading pane stays put.
-            With ~15 cards a desktop viewport only fits ~11; the bottom-fade
-            overlay below signals "more below — scroll the list itself" so the
-            user doesn't think the batch is shorter than the header claims. */}
-        <div className="relative lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-[340px] lg:shrink-0">
-          <aside className="lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
-            {!autopilot ? <FirstBatchBanner /> : null}
-            <div className="overflow-hidden rounded-md border border-line bg-paper">
-              {data.items.map((item) => (
-                <RosterRow
-                  key={item.id}
-                  item={item}
-                  selected={item.id === activeId}
-                  onSelect={onJump}
-                  onSkip={!autopilot ? onMarkSkipped : autopilotActive ? onAutopilotSkip : undefined}
-                  onUnskip={!autopilot ? onMarkDefault : undefined}
-                  rowRef={(el) => {
-                    if (el) cardRefs.current.set(item.id, el);
-                    else cardRefs.current.delete(item.id);
-                  }}
-                />
-              ))}
-            </div>
-          </aside>
-          {/* Bottom-fade affordance — only on lg+ where the aside has its own
-              scroll. Pointer-events-none so it doesn't block clicks on the
-              card peeking through. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-10 bg-gradient-to-t from-paper to-transparent lg:block"
-          />
-        </div>
+            With ~15 cards a desktop viewport only fits ~11; useScrollFade fades
+            the last row out via mask-image so the user can tell there's more
+            below. macOS hides the native scrollbar at rest, so without this
+            hint the column reads as "only 11 cards" even when 15 are loaded. */}
+        <aside
+          ref={rosterRef}
+          style={bottomFadeStyle(showRosterFade)}
+          className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-[340px] lg:shrink-0 lg:overflow-y-auto"
+        >
+          {!autopilot ? <FirstBatchBanner /> : null}
+          <div className="overflow-hidden rounded-md border border-line bg-paper">
+            {data.items.map((item) => (
+              <RosterRow
+                key={item.id}
+                item={item}
+                selected={item.id === activeId}
+                onSelect={onJump}
+                onSkip={!autopilot ? onMarkSkipped : autopilotActive ? onAutopilotSkip : undefined}
+                onUnskip={!autopilot ? onMarkDefault : undefined}
+                rowRef={(el) => {
+                  if (el) cardRefs.current.set(item.id, el);
+                  else cardRefs.current.delete(item.id);
+                }}
+              />
+            ))}
+          </div>
+        </aside>
 
         {/* Reading pane — the selected person's actual email + actions. */}
         <div className="min-w-0 flex-1">
