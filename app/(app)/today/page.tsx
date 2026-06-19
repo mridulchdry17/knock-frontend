@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
 import { showSnagToast } from "@/lib/ui/snag-toast";
 import { useToday, type TodayStatus } from "@/lib/today/use-today";
-import { useScrollFade, bottomFadeStyle } from "@/lib/ui/use-scroll-fade";
 import { useTodayShortcuts } from "@/lib/today/use-today-shortcuts";
 import { pauseAutopilot, resumeAutopilot } from "@/lib/autopilot/client";
 import { ApiError } from "@/lib/api/errors";
@@ -423,12 +422,6 @@ function PopulatedView({
   const selectedItem =
     data.items.find((i) => i.id === activeId) ?? data.items[0] ?? null;
 
-  // Bottom-fade affordance on the roster column. Re-measures when the list
-  // length changes (e.g. after applying a template that resurrects skipped
-  // cards) so the fade goes away if the list now fits the viewport.
-  const { ref: rosterRef, showBottomFade: showRosterFade } =
-    useScrollFade<HTMLElement>([data.items.length]);
-
   const handleApplyTemplate = React.useCallback(
     async (templateId: string) => {
       const res = await applyTemplate(templateId);
@@ -458,16 +451,16 @@ function PopulatedView({
         {/* Roster — the "who". Tight, scannable; the message is the same template
             for everyone, so the recipient is what the user evaluates.
 
-            The aside has its own scroll on lg+ so the reading pane stays put.
-            With ~15 cards a desktop viewport only fits ~11; useScrollFade fades
-            the last row out via mask-image so the user can tell there's more
-            below. macOS hides the native scrollbar at rest, so without this
-            hint the column reads as "only 11 cards" even when 15 are loaded. */}
-        <aside
-          ref={rosterRef}
-          style={bottomFadeStyle(showRosterFade)}
-          className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-[340px] lg:shrink-0 lg:overflow-y-auto"
-        >
+            LAYOUT MODEL (Gmail / Linear / Notion list-detail): the list flows
+            with the page — no max-height, no internal scroll. The detail pane
+            on the right is what sticks. That way a batch of N cards always
+            renders all N rows (page scroll reveals 12–15 naturally), the
+            macOS-hidden internal scrollbar problem goes away, and the editor
+            on the right stays anchored as the user scans further down. The
+            previous "list scrolls inside its own column" model capped the
+            visible row count at viewport-height ÷ row-height regardless of
+            how many cards were in the batch. */}
+        <aside className="lg:w-[340px] lg:shrink-0">
           {!autopilot ? <FirstBatchBanner /> : null}
           <div className="overflow-hidden rounded-md border border-line bg-paper">
             {data.items.map((item) => (
@@ -487,8 +480,12 @@ function PopulatedView({
           </div>
         </aside>
 
-        {/* Reading pane — the selected person's actual email + actions. */}
-        <div className="min-w-0 flex-1">
+        {/* Reading pane — the selected person's actual email + actions.
+            Sticky on lg+ at top-24 (just under the app header). max-h pinned
+            to the remaining viewport so a tall editor body scrolls inside
+            the pane instead of forcing the whole page taller than the list.
+            On mobile (<lg) this is a normal flex item, no stickiness. */}
+        <div className="min-w-0 flex-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
           {selectedItem ? (
             <RecipientCard
               key={selectedItem.id}
