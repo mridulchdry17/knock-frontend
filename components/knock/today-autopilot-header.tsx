@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +11,10 @@ interface TodayAutopilotHeaderProps {
   sentToday: number;
   /** True when the user has paused autopilot; flips header to paused-mid-day variant. */
   paused: boolean;
+  /** Name of the user's default template (the one autopilot uses). When
+   *  present, shown inline with a star + a "Change" link to /templates so
+   *  the user can swap it without diving into preferences. */
+  defaultTemplateName?: string | null;
   onPause?: () => void;
   onResume?: () => void;
   onSwitchToManual?: () => void;
@@ -29,11 +35,27 @@ export function TodayAutopilotHeader({
   cap,
   sentToday,
   paused,
+  defaultTemplateName,
   onPause,
   onResume,
   onSwitchToManual,
 }: TodayAutopilotHeaderProps) {
   const remaining = Math.max(0, cap - sentToday);
+  const templateChip = defaultTemplateName ? (
+    <span className="mt-1 inline-flex flex-wrap items-center gap-1.5 text-small text-ink-2 lg:mt-0 lg:ml-3 lg:inline-flex">
+      <Star size={12} className="fill-ember text-ember" aria-hidden />
+      <span>
+        Using <span className="font-medium text-ink">{defaultTemplateName}</span>
+      </span>
+      <span className="text-ink-3">·</span>
+      <Link
+        href="/templates"
+        className="text-flint underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded-sm"
+      >
+        Change template
+      </Link>
+    </span>
+  ) : null;
 
   if (paused) {
     return (
@@ -86,6 +108,7 @@ export function TodayAutopilotHeader({
           <p className="hidden text-small text-ink-2 lg:block">
             Knock will send {remaining} more through the afternoon.
           </p>
+          {templateChip}
         </div>
         <div className="lg:flex lg:items-center">
           {/* Desktop: inline button. Mobile: sticky bottom button (rendered below header). */}

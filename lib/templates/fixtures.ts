@@ -27,6 +27,7 @@ const STARTER_SEED: Template[] = [
       "<p>Would love to chat if you have a few minutes this week.</p>" +
       "<p>Best,<br>Alex</p>",
     is_starter: true,
+    is_default: true,
     used_count: 0,
     reply_rate: null,
     created_at: "2026-05-01T00:00:00Z",
@@ -43,6 +44,7 @@ const STARTER_SEED: Template[] = [
       "<p>Would love 15 minutes if you're open.</p>" +
       "<p>Thanks,<br>Alex</p>",
     is_starter: true,
+    is_default: false,
     used_count: 0,
     reply_rate: null,
     created_at: "2026-05-01T00:00:00Z",
@@ -58,6 +60,7 @@ const STARTER_SEED: Template[] = [
       "happy to share a project I've shipped since then.</p>" +
       "<p>Thanks,<br>Alex</p>",
     is_starter: true,
+    is_default: false,
     used_count: 0,
     reply_rate: null,
     created_at: "2026-05-01T00:00:00Z",
@@ -95,6 +98,7 @@ export function fixtureCreate(input: TemplateInput): Template {
     subject: input.subject,
     body: input.body,
     is_starter: false,
+    is_default: false,
     used_count: 0,
     reply_rate: null,
     created_at: now,

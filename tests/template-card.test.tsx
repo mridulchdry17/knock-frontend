@@ -9,6 +9,7 @@ const baseTemplate: Template = {
   subject: "Hello {{first_name}}",
   body: "<p>Hi {{first_name}} at {{company}}, here's why…</p>",
   is_starter: true,
+  is_default: false,
   used_count: 4,
   reply_rate: null,
   created_at: "2026-05-01T00:00:00Z",

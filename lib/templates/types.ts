@@ -16,6 +16,9 @@ export const TemplateSchema = z.object({
   subject: z.string(),
   body: z.string(),
   is_starter: z.boolean(),
+  // Marks the autopilot default. Exactly one per user is true. Set via
+  // POST /api/v1/templates/{id}/default.
+  is_default: z.boolean(),
   used_count: z.number().int().nonnegative(),
   reply_rate: z.number().min(0).max(1).nullable(),
   created_at: z.string(),

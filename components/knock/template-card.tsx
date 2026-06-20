@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -13,6 +14,11 @@ interface TemplateCardProps {
   template: Template;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Toggle this card to be the autopilot default. The parent owns the
+   *  network call + optimistic state update; this card just fires the
+   *  intent on click. Omit to hide the star (e.g., in views where the
+   *  default doesn't apply). */
+  onSetDefault?: (id: string) => void;
   className?: string;
 }
 
@@ -27,6 +33,7 @@ export function TemplateCard({
   template,
   onEdit,
   onDelete,
+  onSetDefault,
   className,
 }: TemplateCardProps) {
   const handleCardClick = (e: React.MouseEvent) => {
@@ -60,9 +67,49 @@ export function TemplateCard({
       aria-label={`Edit template ${template.name}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-[17px] font-medium leading-6 text-ink">
-          {template.name}
-        </h3>
+        <div className="flex min-w-0 items-center gap-2">
+          {onSetDefault ? (
+            <button
+              type="button"
+              data-card-action="set-default"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!template.is_default) onSetDefault(template.id);
+              }}
+              aria-label={
+                template.is_default
+                  ? `${template.name} is the autopilot default`
+                  : `Make ${template.name} the autopilot default`
+              }
+              aria-pressed={template.is_default}
+              title={
+                template.is_default
+                  ? "Autopilot uses this template"
+                  : "Make autopilot use this template"
+              }
+              className={cn(
+                "shrink-0 rounded-sm p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                template.is_default
+                  ? "text-ember"
+                  : "text-ink-3 hover:text-ember",
+              )}
+            >
+              <Star
+                size={16}
+                className={template.is_default ? "fill-ember" : ""}
+                aria-hidden
+              />
+            </button>
+          ) : null}
+          <h3 className="truncate text-[17px] font-medium leading-6 text-ink">
+            {template.name}
+          </h3>
+          {template.is_default ? (
+            <span className="ml-1 inline-flex shrink-0 items-center rounded-pill bg-ember-tint px-1.5 py-0.5 text-caption font-medium text-flint">
+              Default
+            </span>
+          ) : null}
+        </div>
         <span className="shrink-0 text-small text-ink-3">{metric}</span>
       </div>
 
