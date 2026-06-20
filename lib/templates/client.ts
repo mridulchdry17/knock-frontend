@@ -114,3 +114,32 @@ export async function testSendTemplate(id: string): Promise<TestSendResult> {
     throw new ApiError(0, "unknown", "We hit a snag sending. Try again in a moment.");
   }
 }
+
+/**
+ * Mark this template as the user's autopilot default. Atomic on the
+ * backend — flipping one to default clears the flag on every other
+ * template for this user. Returns the now-default template (with
+ * `is_default: true`).
+ */
+export async function setTemplateAsDefault(id: string): Promise<Template> {
+  if (isFixtureMode()) {
+    // Fixture path mirrors the backend's single-default invariant.
+    const list = fixtureList();
+    const target = list.items.find((t) => t.id === id);
+    if (!target) {
+      throw new ApiError(404, "not_found", "Template not found.");
+    }
+    list.items.forEach((t) => (t.is_default = t.id === id));
+    return { ...target, is_default: true };
+  }
+  try {
+    const raw = await apiFetch<unknown>(
+      `/api/v1/templates/${encodeURIComponent(id)}/default`,
+      { method: "POST", body: {} },
+    );
+    return TemplateSchema.parse(raw);
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError(0, "unknown", "We hit a snag updating the default.");
+  }
+}

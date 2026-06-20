@@ -6,6 +6,7 @@ import {
   createTemplate as apiCreate,
   deleteTemplate as apiDelete,
   fetchTemplates,
+  setTemplateAsDefault as apiSetDefault,
   testSendTemplate as apiTestSend,
   updateTemplate as apiUpdate,
 } from "@/lib/templates/client";
@@ -33,6 +34,7 @@ export interface TemplateMutations {
   update: (id: string, patch: TemplatePatch) => Promise<Template>;
   remove: (id: string) => Promise<void>;
   testSend: (id: string) => Promise<TestSendResult>;
+  setDefault: (id: string) => Promise<Template>;
 }
 
 export interface UseTemplatesResult {
@@ -120,6 +122,7 @@ export function useTemplates(): UseTemplatesResult {
         subject: input.subject,
         body: input.body,
         is_starter: false,
+        is_default: false,
         used_count: 0,
         reply_rate: null,
         created_at: now,
@@ -199,6 +202,32 @@ export function useTemplates(): UseTemplatesResult {
     return apiTestSend(id);
   }, []);
 
+  const setDefault = useCallback(
+    async (id: string): Promise<Template> => {
+      // Optimistic single-default flip: mark this one default, every other
+      // false. The server enforces the same invariant atomically. On error,
+      // rollback.
+      const snapshot = listRef.current;
+      const next = snapshot.items.map((t) => ({
+        ...t,
+        is_default: t.id === id,
+      }));
+      setListBoth({ ...snapshot, items: next });
+      try {
+        const updated = await apiSetDefault(id);
+        // Reconcile with the server-canonical row (timestamps etc.).
+        const cur = listRef.current;
+        const items = cur.items.map((t) => (t.id === updated.id ? updated : t));
+        setListBoth({ ...cur, items });
+        return updated;
+      } catch (err) {
+        setListBoth(snapshot);
+        throw err;
+      }
+    },
+    [setListBoth],
+  );
+
   const atCap = list.count >= list.cap;
 
   return {
@@ -209,6 +238,6 @@ export function useTemplates(): UseTemplatesResult {
     atCap,
     error,
     refresh,
-    mutations: { create, update, remove, testSend },
+    mutations: { create, update, remove, testSend, setDefault },
   };
 }

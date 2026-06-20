@@ -32,6 +32,7 @@ function tpl(over: Partial<Record<string, unknown>> = {}) {
     subject: "Subj",
     body: "<p>B</p>",
     is_starter: true,
+  is_default: false,
     used_count: 0,
     reply_rate: null,
     created_at: "2026-05-01T00:00:00Z",

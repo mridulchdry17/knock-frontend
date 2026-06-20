@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-context";
 import { showSnagToast } from "@/lib/ui/snag-toast";
 import { useToday, type TodayStatus } from "@/lib/today/use-today";
+import { fetchTemplates } from "@/lib/templates/client";
 import { useTodayShortcuts } from "@/lib/today/use-today-shortcuts";
 import { pauseAutopilot, resumeAutopilot } from "@/lib/autopilot/client";
 import { ApiError } from "@/lib/api/errors";
@@ -42,6 +43,27 @@ export default function TodayPage() {
     user?.tier === "paid" &&
     user?.autopilot_enabled === true &&
     Boolean(user?.autopilot_paused_at);
+
+  // Surface the autopilot template name in the header so the user always
+  // knows which template is sending in their name + can swap it from one
+  // tap (link goes to /templates where they star a different one).
+  // Fetched lazily and ONLY while autopilot is live; we don't burn a
+  // request on every /today render for users in manual mode.
+  const [defaultTemplateName, setDefaultTemplateName] = React.useState<
+    string | null
+  >(null);
+  React.useEffect(() => {
+    if (!isAutopilot && !isAutopilotPaused) return;
+    let cancelled = false;
+    void fetchTemplates().then((res) => {
+      if (cancelled || res.kind !== "list") return;
+      const def = res.data.items.find((t) => t.is_default);
+      setDefaultTemplateName(def?.name ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAutopilot, isAutopilotPaused]);
 
   const banner = user && user.gmail_connected === false ? <GmailDisconnectedBanner /> : null;
 
@@ -120,6 +142,7 @@ export default function TodayPage() {
           cap={cap ?? 15}
           sentToday={sent ?? 0}
           paused={isAutopilotPaused}
+          defaultTemplateName={defaultTemplateName}
           onPause={onAutopilotPause}
           onResume={onAutopilotResume}
           onSwitchToManual={onSwitchToManual}

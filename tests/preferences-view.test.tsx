@@ -12,6 +12,21 @@ vi.mock("@/lib/preferences/client", () => ({
   disableAutopilot: vi.fn(),
 }));
 
+// AutopilotSection lazily fetches templates + today's batch when the
+// preview sheet opens so the user can see the rendered emails before
+// committing. The fetches just resolve to empty results in tests — the
+// dialog still opens and renders the title/buttons, which is all these
+// tests care about.
+vi.mock("@/lib/templates/client", () => ({
+  fetchTemplates: vi.fn().mockResolvedValue({
+    kind: "list",
+    data: { items: [], count: 0, cap: 3 },
+  }),
+}));
+vi.mock("@/lib/today/client", () => ({
+  fetchTodayBatch: vi.fn().mockResolvedValue({ kind: "no-batch-yet" }),
+}));
+
 const hoisted = vi.hoisted(() => ({
   refreshMock: vi.fn(),
   signOutRemoteMock: vi.fn(),
@@ -198,12 +213,10 @@ describe("PreferencesView — autopilot", () => {
     const user = userEvent.setup();
     const autopilotRadio = await screen.findByRole("radio", { name: /Autopilot/ });
     await user.click(autopilotRadio);
+    // Title pins the trust-first preview sheet; description copy changed in
+    // the autopilot-template-default refactor (now mentions a template name
+    // + a 6am send time once the templates fetch resolves).
     expect(await screen.findByText("Turn on autopilot?")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /We'll send up to 15 emails per day in your name, using your saved templates\. You can pause anytime from \/today\./,
-      ),
-    ).toBeInTheDocument();
   });
 
   it("enables autopilot on confirm and shows locked toast", async () => {
@@ -212,7 +225,9 @@ describe("PreferencesView — autopilot", () => {
     render(<PreferencesView />);
     const user = userEvent.setup();
     await user.click(await screen.findByRole("radio", { name: /Autopilot/ }));
-    await user.click(await screen.findByRole("button", { name: "Enable autopilot" }));
+    // Button label changed from "Enable autopilot" to "Turn on autopilot"
+    // in the trust-first preview sheet.
+    await user.click(await screen.findByRole("button", { name: "Turn on autopilot" }));
     await waitFor(() => expect(enableMock).toHaveBeenCalled());
     expect(toastMock).toHaveBeenCalledWith(
       "Autopilot's on. First batch goes out tomorrow at 6am.",
