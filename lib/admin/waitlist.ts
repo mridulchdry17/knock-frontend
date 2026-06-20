@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { apiFetch } from "@/lib/api/client";
 import { getToken } from "@/lib/auth/token";
 import { ApiError } from "@/lib/api/errors";
@@ -8,20 +9,54 @@ import {
   type Page,
 } from "@/lib/admin/types";
 
+export type WaitlistStatus = "pending" | "approved" | "all";
+export type WaitlistSort = "newest" | "oldest";
+
 export interface ListWaitlistParams {
   limit?: number;
   offset?: number;
+  search?: string;
+  status?: WaitlistStatus;
+  sort?: WaitlistSort;
 }
 
 const PageOfWaitlistSchema = PageSchema(AdminWaitlistOutSchema);
 
-export async function listWaitlist(params: ListWaitlistParams = {}): Promise<Page<AdminWaitlistOut>> {
+export async function listWaitlist(
+  params: ListWaitlistParams = {},
+): Promise<Page<AdminWaitlistOut>> {
   const sp = new URLSearchParams();
   if (params.limit !== undefined) sp.set("limit", String(params.limit));
   if (params.offset !== undefined) sp.set("offset", String(params.offset));
+  if (params.search) sp.set("search", params.search);
+  if (params.status) sp.set("status", params.status);
+  if (params.sort) sp.set("sort", params.sort);
   const qs = sp.toString();
-  const data = await apiFetch<unknown>(`/api/v1/admin/waitlist${qs ? `?${qs}` : ""}`);
+  const data = await apiFetch<unknown>(
+    `/api/v1/admin/waitlist${qs ? `?${qs}` : ""}`,
+  );
   return PageOfWaitlistSchema.parse(data);
+}
+
+const BulkApproveResultSchema = z.object({
+  newly_approved: z.number().int().nonnegative(),
+  already_approved: z.number().int().nonnegative(),
+  not_found_ids: z.array(z.number().int()),
+});
+
+export type BulkApproveResult = z.infer<typeof BulkApproveResultSchema>;
+
+/** Approve N waitlist entries in one call. Idempotent on already-approved
+ *  rows (they count toward `already_approved`, not `newly_approved`). */
+export async function bulkApproveWaitlist(
+  ids: number[],
+  tier: "free" | "paid" = "free",
+): Promise<BulkApproveResult> {
+  const data = await apiFetch<unknown>(
+    "/api/v1/admin/waitlist/approve-bulk",
+    { method: "POST", body: { ids, tier } },
+  );
+  return BulkApproveResultSchema.parse(data);
 }
 
 /** Allow a waitlist entry in. `tier='paid'` pre-marks the entry so the user
