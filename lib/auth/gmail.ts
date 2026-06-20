@@ -12,16 +12,14 @@ export async function disconnectGmail(): Promise<void> {
 }
 
 /**
- * Top-level navigation to the backend's /auth/login. Same handoff the marketing
- * "Sign in" CTA uses — backend grants Gmail scopes and redirects back to
- * /auth/complete with the token + `next` param.
+ * Top-level navigation to the same-origin OAuth bootstrap (`/api/auth/login`).
+ * The proxy at that route forwards to the backend's `/auth/login` and pipes
+ * Set-Cookie back through the frontend origin — so the OAuth state cookies
+ * (and later the refresh token cookie) live on the frontend's domain where
+ * subsequent silent-refresh calls can read them.
  */
-const FALLBACK_OAUTH_URL = "http://localhost:8000";
-
 export function startGmailOAuth(next = "/today"): void {
   if (typeof window === "undefined") return;
-  const base = process.env.NEXT_PUBLIC_BACKEND_OAUTH_URL || FALLBACK_OAUTH_URL;
-  const trimmed = base.replace(/\/$/, "");
   const nextParam = encodeURIComponent(next);
-  window.location.href = `${trimmed}/auth/login?next=${nextParam}`;
+  window.location.href = `/api/auth/login?next=${nextParam}`;
 }

@@ -4,17 +4,16 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Marketing "Sign in" CTA → top-level navigation to
- * `${NEXT_PUBLIC_BACKEND_OAUTH_URL}/auth/login`. The backend runs the Google
- * OAuth dance and redirects back to /auth/complete?next=...#token=...
- *
- * Public env var is required (browser-side navigation to the public OAuth
- * bootstrap endpoint, not the proxied API).
+ * Marketing "Sign in" CTA → top-level navigation to `/api/auth/login` on
+ * THIS origin. That route proxies to the backend's `/auth/login`, but
+ * crucially the proxy is what puts `Set-Cookie` on the browser — so the
+ * `oauth_state` + `oauth_code_verifier` cookies (and later the
+ * `refresh_token` cookie set by `/auth/google/callback`) live on the
+ * frontend origin where every other request can find them.
  *
  * `variant="link"` = the quiet header path for already-invited users.
  * `variant="button"` = a bordered secondary button (footer / repeat CTA).
  */
-const FALLBACK_OAUTH_URL = "http://localhost:8000";
 
 export function SignInLink({
   variant = "link",
@@ -31,9 +30,9 @@ export function SignInLink({
     e.preventDefault();
     if (going) return;
     setGoing(true);
-    const base = process.env.NEXT_PUBLIC_BACKEND_OAUTH_URL || FALLBACK_OAUTH_URL;
-    // Top-level navigation — fine for OAuth bootstrap.
-    window.location.href = `${base.replace(/\/$/, "")}/auth/login`;
+    // Same-origin OAuth bootstrap — the proxy at /api/auth/login handles
+    // the redirect to Google and the cookie scoping.
+    window.location.href = "/api/auth/login";
   }
 
   const text = going ? "Taking you to Google…" : label;

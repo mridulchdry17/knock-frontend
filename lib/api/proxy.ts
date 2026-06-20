@@ -116,6 +116,14 @@ export async function proxyRequest(
     respHeaders.append("set-cookie", v);
   }
 
+  // Forward Location for 3xx redirects (e.g. OAuth: /auth/login returns a
+  // 302 to Google's consent screen; /auth/google/callback returns a 302 to
+  // /auth/complete?#token=...). The browser follows whatever we put in
+  // Location. Safe to forward unconditionally — non-redirect responses
+  // simply don't have this header.
+  const upstreamLocation = upstream.headers.get("location");
+  if (upstreamLocation) respHeaders.set("Location", upstreamLocation);
+
   if (stream) {
     const cd = upstream.headers.get("content-disposition");
     if (cd) respHeaders.set("Content-Disposition", cd);
