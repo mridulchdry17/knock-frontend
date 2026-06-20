@@ -1,4 +1,5 @@
 import { clearToken, getToken } from "@/lib/auth/token";
+import { refreshAccessToken } from "@/lib/auth/refresh";
 import { ApiError, toApiError } from "@/lib/api/errors";
 
 /**
@@ -13,17 +14,32 @@ import { ApiError, toApiError } from "@/lib/api/errors";
  *   /api/v1/<rest>  →  /api/<rest>
  * Anything else is passed through unchanged.
  *
- * 401 handling — split path (F.3):
- *  - Codes meaning "session is gone" (`session_expired`, `invalid_token`,
- *    `token_revoked`) → clear token + hard-redirect to landing.
- *  - Anything else (default `unauthorized`) AND a token is still in memory
- *    → treat as Gmail-token revoked at Google. Token stays. Emit a
- *    `knock:gmail-reauth-required` window event for AuthContext to flip its
- *    flag and surface the global reauth banner. The caller still receives
- *    an ApiError (the request failed), but no destructive side effect.
+ * 401 handling — auth-v1 path:
+ *  1. First attempt: send the request with whatever access token is in memory.
+ *  2. On 401 with code='access_token_expired' (or no token in memory):
+ *     silently call /auth/refresh. If it returns a fresh access token,
+ *     retry the original request ONCE.
+ *  3. If refresh fails OR the retry still 401s: clear the access token and
+ *     redirect to landing. The user re-logs.
+ *  4. Codes meaning "session genuinely revoked at Google" (not just expired
+ *     — e.g. user clicked Disconnect, Google revoked the OAuth grant) still
+ *     surface as GMAIL_REAUTH_EVENT for AuthContext to handle.
+ *
+ * Single-flight refresh is guaranteed by `refreshAccessToken()` — if ten
+ * components each fire a request and all 401 simultaneously, exactly one
+ * /auth/refresh call goes out.
  */
 export const GMAIL_REAUTH_EVENT = "knock:gmail-reauth-required" as const;
 const SESSION_DEAD_CODES = new Set(["session_expired", "invalid_token", "token_revoked"]);
+/** Refresh-cookie-side error codes from the backend's /refresh endpoint. The
+ * frontend sees these directly only when calling /auth/refresh (which goes
+ * through fetch, not apiFetch); inside apiFetch they appear if anyone bypasses
+ * refreshAccessToken and hits /api/auth/refresh directly. */
+const REFRESH_DEAD_CODES = new Set([
+  "no_refresh_token",
+  "refresh_invalid",
+  "refresh_reuse_detected",
+]);
 
 export type ApiFetchOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
@@ -44,9 +60,13 @@ export function toProxyPath(path: string): string {
   return path;
 }
 
-export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { auth = true, body, headers, redirectOn401, ...rest } = options;
-
+/** Send a single request with the CURRENT access token. Internal — does NOT
+ * recurse on 401. Refresh + retry orchestration is in `apiFetch`. */
+async function sendOnce(
+  target: string,
+  options: ApiFetchOptions,
+): Promise<Response> {
+  const { auth = true, body, headers, ...rest } = options;
   const finalHeaders = new Headers(headers);
   if (!finalHeaders.has("Content-Type") && body !== undefined) {
     finalHeaders.set("Content-Type", "application/json");
@@ -55,22 +75,56 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
     const token = getToken();
     if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
   }
-
-  const target = toProxyPath(path);
-
-  const res = await fetch(target, {
+  return fetch(target, {
     ...rest,
     headers: finalHeaders,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
+    credentials: "same-origin", // cookies (refresh + any session) ride along
   });
+}
+
+export async function apiFetch<T = unknown>(
+  path: string,
+  options: ApiFetchOptions = {},
+): Promise<T> {
+  const { redirectOn401, ...rest } = options;
+  const target = toProxyPath(path);
+
+  // The /auth/refresh path is the ONE endpoint that must not enter the
+  // refresh-retry loop — that would be infinite recursion. Callers should
+  // use `refreshAccessToken()` directly, but defend here as well.
+  const isRefreshCall = target === "/api/auth/refresh";
+
+  let res = await sendOnce(target, rest);
+
+  // Try silent refresh exactly once on 401 (and only if not already in the
+  // refresh path). If refresh returns a token, retry the original request.
+  if (res.status === 401 && !isRefreshCall) {
+    const errBody = await res.clone().json().catch(() => null);
+    const err = toApiError(401, errBody);
+    const isGenuineSessionDeath = SESSION_DEAD_CODES.has(err.code);
+
+    // Don't silent-refresh when the backend explicitly said 'this session
+    // is dead' (e.g. /disconnect cleared it) — refresh will likely 401 too,
+    // and the destructive redirect should happen now.
+    if (!isGenuineSessionDeath) {
+      const fresh = await refreshAccessToken();
+      if (fresh) {
+        res = await sendOnce(target, rest);
+      }
+    }
+  }
 
   if (res.status === 401) {
     const errBody = await res.json().catch(() => null);
     const err = toApiError(401, errBody);
 
     const tokenStillInMemory = Boolean(getToken());
-    const sessionDead = SESSION_DEAD_CODES.has(err.code) || !tokenStillInMemory;
+    const sessionDead =
+      SESSION_DEAD_CODES.has(err.code) ||
+      REFRESH_DEAD_CODES.has(err.code) ||
+      !tokenStillInMemory;
 
     if (sessionDead) {
       clearToken();
