@@ -111,6 +111,12 @@ export async function apiFetch<T = unknown>(
     if (!isGenuineSessionDeath) {
       const fresh = await refreshAccessToken();
       if (fresh) {
+        // LOAD-BEARING: this reassignment is what prevents the fall-through
+        // `if (res.status === 401)` block below from being a "Response body
+        // already read" error. The original 401's body was consumed via
+        // res.clone().json() above; this fresh response's body is untouched.
+        // If anyone refactors and removes the reassignment, the retry path
+        // breaks silently — write a test before changing it.
         res = await sendOnce(target, rest);
       }
     }

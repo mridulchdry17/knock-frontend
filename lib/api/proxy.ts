@@ -107,11 +107,13 @@ export async function proxyRequest(
   // Forward Set-Cookie headers from backend → browser. Required for the
   // refresh-token flow (OAuth callback + /refresh + /logout all issue or
   // clear the HttpOnly cookie). A single response can carry multiple
-  // Set-Cookie headers; iterate the raw header list so we don't fold them.
-  for (const [k, v] of upstream.headers) {
-    if (k.toLowerCase() === "set-cookie") {
-      respHeaders.append("set-cookie", v);
-    }
+  // Set-Cookie headers — getSetCookie() returns them as a string[] with
+  // each value intact. Iterating `headers` directly would fold them into
+  // one comma-joined string (per the WHATWG Headers spec), which corrupts
+  // the cookie stream because cookie values can legitimately contain commas
+  // (e.g. `expires=Thu, 01 Jan 1970 …` on a clear).
+  for (const v of upstream.headers.getSetCookie()) {
+    respHeaders.append("set-cookie", v);
   }
 
   if (stream) {
