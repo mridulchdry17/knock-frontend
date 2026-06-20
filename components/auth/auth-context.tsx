@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { clearToken, getToken } from "@/lib/auth/token";
+import { refreshAccessToken } from "@/lib/auth/refresh";
 import { fetchCurrentUser } from "@/lib/auth/me";
 import { logout as apiLogout } from "@/lib/auth/onboarding";
 import { GMAIL_REAUTH_EVENT } from "@/lib/api/client";
@@ -41,14 +42,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [gmailReauthRequired, setGmailReauthRequired] = useState(false);
 
   const refresh = useCallback(async () => {
-    const token = getToken();
+    setStatus("loading");
+
+    // auth-v1: the access token lives in memory only, so on app boot it's
+    // always cold. Try a silent refresh first — if the HttpOnly refresh
+    // cookie is still valid, we get a fresh access token without ever
+    // showing a login screen. If it's gone (logged out, expired past
+    // 30 days, family revoked), null comes back and we render the
+    // unauthenticated tree.
+    let token = getToken();
+    if (!token) {
+      token = await refreshAccessToken();
+    }
     setHasToken(Boolean(token));
     if (!token) {
       setUser(null);
       setStatus("unauthenticated");
       return;
     }
-    setStatus("loading");
+
     try {
       const me = await fetchCurrentUser();
       setUser(me);
