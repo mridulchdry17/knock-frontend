@@ -242,6 +242,9 @@ export function TemplateEditor({
               placeholder="Write your email body…"
               ariaLabel="Email body"
               minHeight="min-h-[240px]"
+              // flex-1 + min-h-0 lets the editor shrink inside the edit pane;
+              // without this, long bodies overflow past the dialog footer.
+              className="min-h-0 flex-1"
               toolbar={(ed) => (
                 <TemplateToolbar editor={ed} onInsertVariable={handleInsertVariable} />
               )}
@@ -253,7 +256,7 @@ export function TemplateEditor({
         {showPreview ? (
           <div
             className={cn(
-              "flex min-h-0 flex-col gap-3 rounded-md bg-paper-2 p-card",
+              "flex min-h-0 flex-1 flex-col gap-3 rounded-md bg-paper-2 p-card",
               !compact && "lg:basis-2/5",
             )}
             aria-label="Preview"
@@ -261,7 +264,7 @@ export function TemplateEditor({
             <p className="text-caption uppercase text-ink-3">Preview · sample data</p>
             <p className="text-h3 text-ink">{previewSubject}</p>
             <div
-              className="prose-sm rounded-[14px] bg-paper p-4 text-body text-ink"
+              className="prose-sm min-h-0 flex-1 overflow-y-auto rounded-[14px] bg-paper p-4 text-body text-ink"
               data-testid="template-preview-body"
               // Preview HTML is produced client-side from Tiptap output (already
               // sanitized by Tiptap to its allowed schema). dangerouslySetInnerHTML

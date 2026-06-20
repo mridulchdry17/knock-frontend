@@ -140,7 +140,11 @@ describe("useToday — F.5b optimistic mutations", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1); // only the initial GET
   });
 
-  it("beginSend fires API after 3s and transitions cards to sent", async () => {
+  it("beginSend fires API after 3s and reaches 'dispatched' WITHOUT flipping cards to sent", async () => {
+    // New staggered model: clicking "Approve today's batch" queues the cards
+    // at the back of the staggered schedule on the backend. They stay 'ready'
+    // until each card's send_time arrives (the scheduler does the real send).
+    // So the optimistic UI must NOT flip ready→sent here.
     vi.useFakeTimers();
     const fetchSpy = vi
       .fn()
@@ -164,7 +168,10 @@ describe("useToday — F.5b optimistic mutations", () => {
       vi.advanceTimersByTime(3001);
     });
     await vi.waitFor(() => expect(result.current.sendPhase).toBe("dispatched"));
-    expect(result.current.data?.items[0].status).toBe("sent");
+    // Card stays 'ready' — server will actually send it when its send_time arrives.
+    expect(result.current.data?.items[0].status).toBe("ready");
+    // sent_today must NOT be optimistically bumped (nothing's actually sent yet).
+    expect(result.current.data?.sent_today).toBe(0);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 

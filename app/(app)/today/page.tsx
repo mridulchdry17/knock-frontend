@@ -185,11 +185,11 @@ function beginSendWithToast(today: ReturnType<typeof useToday>) {
   toast.custom(
     (id) => (
       <UndoToast
-        message={`${readyCount} email${readyCount === 1 ? "" : "s"} sending.`}
+        message={`${readyCount} email${readyCount === 1 ? "" : "s"} queued — sending through the day.`}
         durationMs={3000}
         onUndo={() => {
           handle.cancel();
-          toast.custom(() => <SimpleToast message="Held. Send when you're ready." />, {
+          toast.custom(() => <SimpleToast message="Held. Approve when you're ready." />, {
             duration: 1500,
           });
           toast.dismiss(id);
@@ -449,8 +449,18 @@ function PopulatedView({
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         {/* Roster — the "who". Tight, scannable; the message is the same template
-            for everyone, so the recipient is what the user evaluates. */}
-        <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-[340px] lg:shrink-0 lg:overflow-y-auto">
+            for everyone, so the recipient is what the user evaluates.
+
+            LAYOUT MODEL (Gmail / Linear / Notion list-detail): the list flows
+            with the page — no max-height, no internal scroll. The detail pane
+            on the right is what sticks. That way a batch of N cards always
+            renders all N rows (page scroll reveals 12–15 naturally), the
+            macOS-hidden internal scrollbar problem goes away, and the editor
+            on the right stays anchored as the user scans further down. The
+            previous "list scrolls inside its own column" model capped the
+            visible row count at viewport-height ÷ row-height regardless of
+            how many cards were in the batch. */}
+        <aside className="lg:w-[340px] lg:shrink-0">
           {!autopilot ? <FirstBatchBanner /> : null}
           <div className="overflow-hidden rounded-md border border-line bg-paper">
             {data.items.map((item) => (
@@ -470,8 +480,12 @@ function PopulatedView({
           </div>
         </aside>
 
-        {/* Reading pane — the selected person's actual email + actions. */}
-        <div className="min-w-0 flex-1">
+        {/* Reading pane — the selected person's actual email + actions.
+            Sticky on lg+ at top-24 (just under the app header). max-h pinned
+            to the remaining viewport so a tall editor body scrolls inside
+            the pane instead of forcing the whole page taller than the list.
+            On mobile (<lg) this is a normal flex item, no stickiness. */}
+        <div className="min-w-0 flex-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
           {selectedItem ? (
             <RecipientCard
               key={selectedItem.id}

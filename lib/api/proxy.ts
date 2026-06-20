@@ -67,6 +67,14 @@ export async function proxyRequest(
     if (auth) headers.set("Authorization", auth);
   }
 
+  // Forward the inbound Cookie header to the backend. Required for the
+  // refresh-token flow: the browser stores the refresh cookie on the
+  // proxy origin (localhost:3001 in dev / knock.app in prod), and the
+  // backend reads it via `Cookie:` on /api/v1/auth/refresh. Without this,
+  // the backend never sees the cookie and refresh fails with 401.
+  const cookie = req.headers.get("cookie");
+  if (cookie) headers.set("Cookie", cookie);
+
   const ct = req.headers.get("content-type");
   if (ct) headers.set("Content-Type", ct);
 
@@ -95,6 +103,18 @@ export async function proxyRequest(
   const respHeaders = new Headers();
   const upstreamCT = upstream.headers.get("content-type");
   if (upstreamCT) respHeaders.set("Content-Type", upstreamCT);
+
+  // Forward Set-Cookie headers from backend → browser. Required for the
+  // refresh-token flow (OAuth callback + /refresh + /logout all issue or
+  // clear the HttpOnly cookie). A single response can carry multiple
+  // Set-Cookie headers — getSetCookie() returns them as a string[] with
+  // each value intact. Iterating `headers` directly would fold them into
+  // one comma-joined string (per the WHATWG Headers spec), which corrupts
+  // the cookie stream because cookie values can legitimately contain commas
+  // (e.g. `expires=Thu, 01 Jan 1970 …` on a clear).
+  for (const v of upstream.headers.getSetCookie()) {
+    respHeaders.append("set-cookie", v);
+  }
 
   if (stream) {
     const cd = upstream.headers.get("content-disposition");
