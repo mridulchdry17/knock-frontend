@@ -34,6 +34,7 @@ function tpl(id: string, name: string) {
     subject: "S",
     body: "<p>B</p>",
     is_starter: true,
+  is_default: false,
     used_count: 0,
     reply_rate: null,
     created_at: "2026-05-01T00:00:00Z",

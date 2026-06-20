@@ -177,6 +177,14 @@ export function TemplatesView() {
                 template={t}
                 onEdit={openEdit}
                 onDelete={(id) => setDeletingId(id)}
+                onSetDefault={async (id) => {
+                  try {
+                    const updated = await mutations.setDefault(id);
+                    toast(`Autopilot will use "${updated.name}".`);
+                  } catch {
+                    toast.error("We hit a snag updating the default.");
+                  }
+                }}
               />
             ))}
           </div>
