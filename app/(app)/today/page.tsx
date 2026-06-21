@@ -531,6 +531,13 @@ function PopulatedView({
 }
 
 function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
+  // Fallback errors from useToday already use the same "We hit a snag …"
+  // phrase, so concatenating "We hit a snag …" + message would print the
+  // sentence twice. Only show the extra detail when the message has
+  // additional info on top of the generic snag phrase.
+  const SNAG_PREFIX = "We hit a snag loading today's batch.";
+  const extra =
+    message && !message.startsWith(SNAG_PREFIX) ? ` ${message}` : "";
   return (
     <div
       role="alert"
@@ -538,7 +545,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
       className="border-b border-bordeaux/30 bg-bordeaux-tint px-gutter py-3 text-small text-bordeaux lg:px-8"
     >
       <div className="mx-auto flex max-w-[880px] items-center justify-between gap-3">
-        <span>We hit a snag loading today&apos;s batch. {message}</span>
+        <span>{SNAG_PREFIX}{extra}</span>
         <Button variant="ghost" size="sm" onClick={onRetry}>
           Retry
         </Button>

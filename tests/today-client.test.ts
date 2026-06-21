@@ -96,6 +96,54 @@ describe("fetchTodayBatch", () => {
     if (result.kind === "error") expect(result.error.status).toBe(500);
   });
 
+  it("does NOT reject a batch with a malformed recipient email", async () => {
+    // Regression: the contact pool occasionally has emails like
+    // "k.@forushealth.com" (scraper produced a partial localpart). Earlier
+    // RecipientSchema used z.string().email() — one bad row crashed the
+    // whole batch's Zod parse and the user saw the snag banner.
+    const batchWithBadEmail = {
+      ...validBatch,
+      items: [
+        {
+          ...validBatch.items[0],
+          recipient: {
+            ...validBatch.items[0].recipient,
+            email: "k.@forushealth.com",
+          },
+        },
+      ],
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockResponse(200, batchWithBadEmail)));
+    const result = await fetchTodayBatch();
+    expect(result.kind).toBe("batch");
+    if (result.kind === "batch") {
+      expect(result.data.items[0].recipient.email).toBe("k.@forushealth.com");
+    }
+  });
+
+  it("does NOT reject a batch with a non-URL linkedin_url", async () => {
+    // Same reasoning as the bad-email case — strict z.string().url() would
+    // crash on legacy rows where linkedin_url is a bare handle / unknown.
+    const batchWithBadLinkedin = {
+      ...validBatch,
+      items: [
+        {
+          ...validBatch.items[0],
+          recipient: {
+            ...validBatch.items[0].recipient,
+            linkedin_url: "akanksha-puri",
+          },
+        },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(mockResponse(200, batchWithBadLinkedin)),
+    );
+    const result = await fetchTodayBatch();
+    expect(result.kind).toBe("batch");
+  });
+
   it("returns deterministic fixture when NEXT_PUBLIC_USE_TODAY_FIXTURES=true", async () => {
     process.env.NEXT_PUBLIC_USE_TODAY_FIXTURES = "true";
     const fetchSpy = vi.fn();
