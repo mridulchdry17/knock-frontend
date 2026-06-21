@@ -28,12 +28,19 @@ export type ParentSendSummary = z.infer<typeof ParentSendSummarySchema>;
 
 export const RecipientSchema = z.object({
   name: z.string().nullable(),
-  email: z.string().email(),
+  // Plain string, NOT .email() — the scraped contact pool occasionally has
+  // malformed addresses (e.g. "k.@forushealth.com" where the email-guesser
+  // produced a partial localpart). Strict format validation here would
+  // make ONE bad contact crash the WHOLE batch's Zod parse. The send-worker
+  // (server-side) does its own validation before actually sending.
+  email: z.string(),
   role: z.string().nullable(),
   company: z.string(),
   company_domain: z.string(),
-  linkedin_url: z.string().url().nullable(),
-  avatar_url: z.string().url().nullable().optional(),
+  // Same reasoning — older scraper rows occasionally store a non-URL value
+  // in linkedin_url (e.g. a bare handle). Don't break the whole list.
+  linkedin_url: z.string().nullable(),
+  avatar_url: z.string().nullable().optional(),
 });
 export type Recipient = z.infer<typeof RecipientSchema>;
 
